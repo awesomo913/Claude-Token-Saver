@@ -478,6 +478,8 @@ class TokenSaverApp(ctk.CTk):
         r_hdr = ctk.CTkFrame(req_card, fg_color="transparent"); r_hdr.pack(fill="x", padx=12, pady=(10, 2))
         ctk.CTkLabel(r_hdr, text="Or describe what you need:", font=(F, 14, "bold"),
                      text_color=C["accent"]).pack(side="left")
+        ctk.CTkButton(r_hdr, text="Clear", width=55, height=22, font=(F, 9),
+                      fg_color=C["err"], command=self._clear_request).pack(side="right", padx=(4, 0))
         self._auto_status = ctk.CTkLabel(r_hdr, text="", font=(F, 10), text_color=C["ok"])
         self._auto_status.pack(side="right")
 
@@ -608,7 +610,7 @@ class TokenSaverApp(ctk.CTk):
                 results = self._breakdown_large_request(text, snippets_ref)
             else:
                 # Lower threshold for beginners — grab more, not less
-                results = smart_search(snippets_ref, text, max_results=8, min_score=3.0)
+                results = smart_search(snippets_ref, text, max_results=5, min_score=4.0)
 
             if not results:
                 return []
@@ -628,7 +630,7 @@ class TokenSaverApp(ctk.CTk):
                     neighbors.append((2.0, b))  # low score so they rank below direct matches
 
             # Merge: direct matches first, then neighbors, cap at 10 total
-            combined = list(results[:6]) + neighbors[:4]
+            combined = list(results[:4]) + neighbors[:2]
             return combined
 
         def done(results):
@@ -636,20 +638,25 @@ class TokenSaverApp(ctk.CTk):
                 self._auto_status.configure(text="No matches found. Try Quick Grab or Snippets tab.")
                 self._update_preview(); return
 
+            MAX_QUEUE = 15
             added = 0
-            for score, block in results[:10]:
+            for score, block in results[:6]:
+                if len(self._context_queue) >= MAX_QUEUE:
+                    break
                 if not any(q["name"] == block.name for q in self._context_queue):
                     self._context_queue.append({
                         "name": block.name, "source": block.file_path, "content": block.source
                     })
                     added += 1
             if added:
-                self._smart_matches = [b for _, b in results[:10]]
+                self._smart_matches = [b for _, b in results[:6]]
                 self._render_queue(); self._render_matches()
                 self._update_suggestions(); self._update_recent()
                 self._update_token_display()
-                files = len({b.file_path for _, b in results[:10]})
+                files = len({b.file_path for _, b in results[:6]})
                 self._auto_status.configure(text=f"Found {added} snippets from {files} files")
+                if len(self._context_queue) >= MAX_QUEUE:
+                    self._auto_status.configure(text=f"{added} added (queue full at {MAX_QUEUE})")
             else:
                 self._auto_status.configure(text="")
             self._compress_if_needed()
@@ -940,7 +947,7 @@ class TokenSaverApp(ctk.CTk):
 
         added = 0
         names_added = []
-        for b in domain_blocks[:6]:
+        for b in domain_blocks[:4]:
             if not any(q["name"] == b.name for q in self._context_queue):
                 self._context_queue.append({"name": b.name, "source": b.file_path, "content": b.source})
                 names_added.append(b.name)
@@ -958,6 +965,16 @@ class TokenSaverApp(ctk.CTk):
             self._toast(f"Added {added} {domain} snippets to your prompt", "success")
         else:
             self._toast(f"All {domain} code already in your prompt", "info")
+
+    def _clear_request(self) -> None:
+        """Clear the request box, queue, and matches."""
+        self._request_box.delete("1.0", "end")
+        self._context_queue.clear()
+        self._smart_matches.clear()
+        self._render_queue(); self._render_matches()
+        self._update_preview(); self._update_token_display()
+        self._auto_status.configure(text="")
+        self._grab_status.configure(text="") if hasattr(self, '_grab_status') else None
 
     def _set_request(self, text: str) -> None:
         """Set the request box text from a quick-start button."""
@@ -1051,6 +1068,16 @@ class TokenSaverApp(ctk.CTk):
             self._tok_lbl.configure(text=f"~{tokens:,} tokens")
 
     def _copy_context(self) -> None:
+        # Block empty copies
+        request = self._get_request_text()
+        if not self._context_queue and not request:
+            self._toast("Type a request or add snippets first", "warning"); return
+        # Debounce: prevent duplicate clicks
+        if getattr(self, '_copy_locked', False):
+            return
+        self._copy_locked = True
+        self.after(2000, lambda: setattr(self, '_copy_locked', False))
+
         mode = self._tmpl.get()
         if mode == "Smart (Recommended)":
             txt = self._assemble("smart")
@@ -1058,7 +1085,7 @@ class TokenSaverApp(ctk.CTk):
             txt = self._assemble("raw")
         else:
             txt = self._assemble("template")
-        if not txt: self._toast("Add snippets or type a request first", "warning"); return
+        if not txt: self._toast("Nothing to copy", "warning"); return
         tok = len(txt) * 10 // 32
         self._copy_clip(txt, track=False)
         proj = self._project_path.name if self._project_path else ""
@@ -1068,8 +1095,16 @@ class TokenSaverApp(ctk.CTk):
         self._update_token_display()
 
     def _copy_raw(self) -> None:
+        request = self._get_request_text()
+        if not self._context_queue and not request:
+            self._toast("Type a request or add snippets first", "warning"); return
+        if getattr(self, '_copy_locked', False):
+            return
+        self._copy_locked = True
+        self.after(2000, lambda: setattr(self, '_copy_locked', False))
+
         txt = self._assemble("raw")
-        if not txt: self._toast("Add snippets or type a request first", "warning"); return
+        if not txt: self._toast("Nothing to copy", "warning"); return
         tok = len(txt) * 10 // 32
         self._copy_clip(txt, track=False)
         proj = self._project_path.name if self._project_path else ""
