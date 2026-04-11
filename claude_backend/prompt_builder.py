@@ -83,8 +83,10 @@ def clean_request(text: str) -> str:
 
     # Word-level typo fixes (same dict as search engine)
     _COMMON_FIXES = {
-        "teh": "the", "hte": "the", "taht": "that", "adn": "and",
+        "teh": "the", "hte": "the", "th": "the", "thn": "then",
+        "taht": "that", "adn": "and", "nad": "and",
         "fo": "for", "ot": "to", "ti": "it", "si": "is", "nto": "not",
+        "hwo": "how", "waht": "what", "whit": "with", "fro": "from",
         "dont": "don't", "doesnt": "doesn't", "cant": "can't",
         "wont": "won't", "isnt": "isn't", "im": "I'm", "ive": "I've",
         "youre": "you're", "theyre": "they're", "theres": "there's",
