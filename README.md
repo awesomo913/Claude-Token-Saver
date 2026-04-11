@@ -1,11 +1,12 @@
 # Claude Token Saver
 
-Save **84-93% of input tokens** when working with Claude Code by pre-staging targeted code context instead of letting Claude read entire files.
+Save **88% of input tokens** when working with Claude Code by pre-staging targeted code context instead of letting Claude read entire files.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
-![Version](https://img.shields.io/badge/Version-4.5-purple)
+![Version](https://img.shields.io/badge/Version-4.5.1-purple)
+![Tokens Saved](https://img.shields.io/badge/Tokens_Saved-5.7M+-brightgreen)
 
 ## The Problem
 
@@ -90,8 +91,21 @@ Your sloppy typing gets cleaned before going to Claude:
 | `im tryna fix this but i dunno whats wrong` | `I'm trying to fix this but I don't know what's wrong.` |
 | `lemme get teh sesion setings to work` | `Let me get the session settings to work.` |
 
+### Domain Browsing (Browse by Area)
+Non-coders can browse code by what it does, not what type it is:
+
+`[Browser]` `[Config]` `[Search]` `[Windows]` `[GUI]` `[Files]`
+
+Each snippet card shows a colored domain badge so you know what area it belongs to.
+
 ### Token Tracking
-Persistent counter tracks how much you've saved across all sessions and projects.
+Persistent counter tracks how much you've saved across all sessions and projects. Dashboard shows all-time, per-project, and per-session totals.
+
+### Smart Queue Management
+- Queue capped at 15 snippets (prevents bloated prompts)
+- Copy button debounced (no duplicate pastes)
+- Clear button wipes request + queue in one click
+- Empty copies blocked (must have content)
 
 ### Large Request Handling
 Paste a 200-word request and it won't crash. The tool:
@@ -133,26 +147,31 @@ claude_backend/
 
 ## Benchmarks
 
-Tested on real projects over 7 days of actual usage:
+Real data from 7 days of tracked usage across 6 projects:
 
 | Metric | Result |
 |---|---|
-| Events tracked | 48 |
+| Events tracked | 66 |
 | Projects used | 6 |
-| Context builds | 44 |
-| Snippets referenced | 1,281 |
-| Avg input WITH tool | 8,017 tokens |
-| Avg input WITHOUT tool | 71,808 tokens |
+| Context builds | 62 |
+| Snippets referenced | 3,086 |
+| Avg input WITH tool | 10,011 tokens |
+| Avg input WITHOUT tool | ~89,600 tokens |
 | **Reduction per message** | **88%** |
-| Conversation length | 15 exchanges vs 2 (650% longer) |
-| Fewer restarts/day | 32 |
-| Monthly tokens saved | ~41M |
-| Opus value ($15/MTok) | $626/month |
+| **Total tokens saved** | **5,734,087** |
+| Opus value ($15/MTok) | $86 in 7 days |
 
 ### Search Accuracy
-- **100%** on domain-specific queries (15/15 GBA dev queries)
+- **100%** on domain-specific queries (15/15 tested)
 - **91%** on vague natural language (11/12 non-coder queries)
 - **87%** on deliberately misspelled queries (7/8 typo queries)
+
+### Token Waste Prevention
+The session reviewer found and fixed these patterns:
+- Queue capped at 15 snippets (previously unlimited, some copies had 165)
+- Copy button debounced (8 duplicate copies prevented)
+- Empty copies blocked (must have snippets or request text)
+- Auto-find tuned: fewer but more relevant results
 
 ## Claude Pro 20x Max Plan Impact
 
@@ -160,7 +179,7 @@ Tested on real projects over 7 days of actual usage:
 |---|---|---|
 | 2 exchanges per conversation | 15 exchanges | **650% longer** |
 | ~60 restarts/day | ~8 restarts/day | **52 fewer** |
-| 120 effective messages/day | 777 effective messages/day | **547% more** |
+| 120 effective messages/day | 777+ effective messages/day | **547% more** |
 
 Same $200/month plan, dramatically more productive use.
 
