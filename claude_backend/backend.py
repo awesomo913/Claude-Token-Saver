@@ -1,0 +1,232 @@
+"""ClaudeContextManager: orchestrates scanning, analysis, and generation."""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+from .config import ScanConfig, load_config
+from .manifest import Manifest
+from .types import GenerationResult, ProjectAnalysis
+
+from .scanners.project import (
+    find_dependencies,
+    find_entry_points,
+    find_key_files,
+    get_language_stats,
+    scan_project,
+)
+from .analyzers.code_extractor import extract_blocks
+from .analyzers.pattern_detector import detect_conventions
+from .analyzers.structure_mapper import map_modules
+
+from .generators.claude_md import write_claude_md
+from .generators.memory_files import write_memory_files
+from .generators.snippet_library import write_snippet_library
+
+logger = logging.getLogger(__name__)
+
+
+class ClaudeContextManager:
+    """Main orchestrator for the Claude token saver."""
+
+    def __init__(self, config: Optional[ScanConfig] = None) -> None:
+        self.config = config or ScanConfig()
+
+    def analyze(self, project_path: Path) -> ProjectAnalysis:
+        """Scan and analyze a project without generating anything."""
+        project_path = project_path.resolve()
+        name = project_path.name
+
+        logger.info("Scanning %s ...", project_path)
+        entries = scan_project(project_path, self.config)
+
+        logger.info("Analyzing %d files ...", len(entries))
+        lang_stats = get_language_stats(entries)
+        entry_points = find_entry_points(entries)
+        key_files = find_key_files(project_path)
+        dependencies = find_dependencies(project_path)
+        modules = map_modules(entries, name)
+        conventions = detect_conventions(entries)
+
+        # Extract code blocks from all supported files
+        all_blocks = []
+        for entry in entries:
+            blocks = extract_blocks(entry.content, entry.ext, entry.path)
+            all_blocks.extend(blocks)
+
+        # Check for existing CLAUDE.md
+        claude_md = project_path / "CLAUDE.md"
+        existing_content = None
+        if claude_md.is_file():
+            existing_content = claude_md.read_text(encoding="utf-8", errors="replace")
+
+        return ProjectAnalysis(
+            root=project_path,
+            name=name,
+            files=entries,
+            modules=modules,
+            conventions=conventions,
+            language_stats=lang_stats,
+            entry_points=entry_points,
+            dependencies=dependencies,
+            key_files=key_files,
+            existing_claude_md=existing_content,
+            blocks=all_blocks,
+        )
+
+    def bootstrap(self, project_path: Path) -> GenerationResult:
+        """Full scan + generate all context files."""
+        analysis = self.analyze(project_path)
+        result = GenerationResult()
+
+        logger.info(
+            "Analysis: %d files, %d modules, %d code blocks",
+            len(analysis.files), len(analysis.modules), len(analysis.blocks),
+        )
+
+        # Generate CLAUDE.md
+        if self.config.generate_claude_md:
+            try:
+                wrote = write_claude_md(analysis, self.config.claude_md_max_lines)
+                path = str(analysis.root / "CLAUDE.md")
+                if wrote:
+                    result.files_written.append(path)
+                else:
+                    result.files_skipped.append(path)
+            except Exception as e:
+                logger.error("Failed to generate CLAUDE.md: %s", e)
+                result.errors.append(f"CLAUDE.md: {e}")
+
+        # Generate memory files
+        if self.config.generate_memory:
+            try:
+                written = write_memory_files(analysis)
+                result.files_written.extend(written)
+            except Exception as e:
+                logger.error("Failed to generate memory files: %s", e)
+                result.errors.append(f"memory: {e}")
+
+        # Generate snippet library
+        if self.config.generate_snippets:
+            try:
+                written = write_snippet_library(analysis, self.config.max_snippet_lines)
+                result.files_written.extend(written)
+            except Exception as e:
+                logger.error("Failed to generate snippets: %s", e)
+                result.errors.append(f"snippets: {e}")
+
+        # Save manifest
+        manifest_path = project_path / ".claude" / "manifest.jsonl"
+        manifest = Manifest(manifest_path)
+        for f in result.files_written:
+            manifest.record(f, content="", generator="bootstrap")
+        manifest.save()
+
+        logger.info("Bootstrap complete: %s", result.summary)
+        return result
+
+    def prep(self, project_path: Path) -> GenerationResult:
+        """Delta update: only regenerate stale files."""
+        manifest_path = project_path / ".claude" / "manifest.jsonl"
+        manifest = Manifest(manifest_path)
+
+        analysis = self.analyze(project_path)
+        result = GenerationResult()
+
+        if self.config.generate_claude_md:
+            try:
+                wrote = write_claude_md(analysis, self.config.claude_md_max_lines)
+                path = str(analysis.root / "CLAUDE.md")
+                if wrote:
+                    result.files_updated.append(path)
+                else:
+                    result.files_skipped.append(path)
+            except Exception as e:
+                result.errors.append(f"CLAUDE.md: {e}")
+
+        if self.config.generate_memory:
+            try:
+                written = write_memory_files(analysis)
+                result.files_updated.extend(written)
+            except Exception as e:
+                result.errors.append(f"memory: {e}")
+
+        if self.config.generate_snippets:
+            try:
+                written = write_snippet_library(analysis, self.config.max_snippet_lines)
+                result.files_updated.extend(written)
+            except Exception as e:
+                result.errors.append(f"snippets: {e}")
+
+        for f in result.files_updated:
+            manifest.record(f, content="", generator="prep")
+        manifest.save()
+
+        logger.info("Prep complete: %s", result.summary)
+        return result
+
+    def status(self, project_path: Path) -> dict:
+        """Report what's generated and its freshness."""
+        project_path = project_path.resolve()
+        info: dict = {"project": project_path.name, "path": str(project_path)}
+
+        claude_md = project_path / "CLAUDE.md"
+        info["claude_md"] = claude_md.is_file()
+
+        memory_dir = project_path / ".claude" / "memory"
+        if memory_dir.is_dir():
+            info["memory_files"] = [f.name for f in memory_dir.iterdir() if f.is_file()]
+        else:
+            info["memory_files"] = []
+
+        snippets_dir = project_path / ".claude" / "snippets"
+        if snippets_dir.is_dir():
+            count = sum(1 for f in snippets_dir.rglob("*") if f.is_file())
+            info["snippet_count"] = count
+        else:
+            info["snippet_count"] = 0
+
+        manifest_path = project_path / ".claude" / "manifest.jsonl"
+        info["has_manifest"] = manifest_path.is_file()
+
+        return info
+
+    def clean(self, project_path: Path) -> list[str]:
+        """Remove generated artifacts."""
+        project_path = project_path.resolve()
+        removed: list[str] = []
+
+        # Remove generated section from CLAUDE.md
+        claude_md = project_path / "CLAUDE.md"
+        if claude_md.is_file():
+            from .generators.claude_md import MARKER_START, MARKER_END
+            content = claude_md.read_text(encoding="utf-8", errors="replace")
+            start = content.find(MARKER_START)
+            end = content.find(MARKER_END)
+            if start != -1 and end != -1:
+                end += len(MARKER_END)
+                new_content = (content[:start] + content[end:]).strip()
+                if new_content:
+                    claude_md.write_text(new_content + "\n", encoding="utf-8")
+                else:
+                    claude_md.unlink()
+                removed.append(str(claude_md))
+
+        # Remove .claude/memory, .claude/snippets, .claude/manifest.jsonl
+        for subdir in ["memory", "snippets"]:
+            target = project_path / ".claude" / subdir
+            if target.is_dir():
+                import shutil
+                shutil.rmtree(target)
+                removed.append(str(target))
+
+        manifest = project_path / ".claude" / "manifest.jsonl"
+        if manifest.is_file():
+            manifest.unlink()
+            removed.append(str(manifest))
+
+        logger.info("Cleaned %d items", len(removed))
+        return removed

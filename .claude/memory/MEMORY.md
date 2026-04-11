@@ -1,0 +1,4 @@
+- [Reference Architecture](reference_architecture.md) -- Module map and dependency graph
+- [Reference Patterns](reference_patterns.md) -- Common code patterns and error handling
+- [Reference Utilities](reference_utilities.md) -- Reusable functions with locations
+- [Project Conventions](project_conventions.md) -- Detected coding standards and rules

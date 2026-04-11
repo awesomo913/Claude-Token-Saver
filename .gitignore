@@ -1,0 +1,17 @@
+﻿# Python Cache and Binaries
+__pycache__/
+*.pyc
+*.pyd
+*.dll
+*.exe
+
+# Build and Distribution folders
+build/
+dist/
+*.egg-info/
+
+# Local Settings and Private Logs
+*.local.json
+sessions/
+CLAUDE_LOG.jsonl
+CLAUDE_MANIFEST.jsonl

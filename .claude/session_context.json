@@ -1,0 +1,214 @@
+{
+  "context_history": [
+    {
+      "name": "load",
+      "source": "core/save_editor.py",
+      "file_path": "core/save_editor.py",
+      "tokens": 230,
+      "ts": "2026-04-06T16:36:49.510619+00:00"
+    },
+    {
+      "name": "_load_into_ui",
+      "source": "gui/tab_settings.py",
+      "file_path": "gui/tab_settings.py",
+      "tokens": 178,
+      "ts": "2026-04-06T16:36:51.384431+00:00"
+    },
+    {
+      "name": "_collect_current",
+      "source": "gui/tab_trainers.py",
+      "file_path": "gui/tab_trainers.py",
+      "tokens": 281,
+      "ts": "2026-04-06T16:36:52.106381+00:00"
+    },
+    {
+      "name": "_toggle_theme",
+      "source": "app.py",
+      "file_path": "app.py",
+      "tokens": 48,
+      "ts": "2026-04-06T16:36:52.606379+00:00"
+    },
+    {
+      "name": "_on_mgba_connection_changed",
+      "source": "app.py",
+      "file_path": "app.py",
+      "tokens": 88,
+      "ts": "2026-04-06T16:36:53.434753+00:00"
+    },
+    {
+      "name": "_on_settings_changed",
+      "source": "app.py",
+      "file_path": "app.py",
+      "tokens": 90,
+      "ts": "2026-04-06T16:36:53.922215+00:00"
+    },
+    {
+      "name": "embed_in_frame",
+      "source": "core/mgba_bridge.py",
+      "file_path": "core/mgba_bridge.py",
+      "tokens": 458,
+      "ts": "2026-04-06T16:36:54.634995+00:00"
+    },
+    {
+      "name": "_halt_for_access",
+      "source": "core/mgba_bridge.py",
+      "file_path": "core/mgba_bridge.py",
+      "tokens": 239,
+      "ts": "2026-04-06T16:36:55.189025+00:00"
+    },
+    {
+      "name": "find_and_position_window",
+      "source": "gemini_coder_web/window_manager.py",
+      "file_path": "gemini_coder_web/window_manager.py",
+      "tokens": 132,
+      "ts": "2026-04-06T20:35:37.636556+00:00"
+    },
+    {
+      "name": "capture_foreground_and_position",
+      "source": "gemini_coder_web/window_manager.py",
+      "file_path": "gemini_coder_web/window_manager.py",
+      "tokens": 145,
+      "ts": "2026-04-06T20:35:37.714742+00:00"
+    },
+    {
+      "name": "connect_to_ai_site",
+      "source": "gemini_coder_web/cdp_client.py",
+      "file_path": "gemini_coder_web/cdp_client.py",
+      "tokens": 407,
+      "ts": "2026-04-06T20:35:37.794957+00:00"
+    },
+    {
+      "name": "send_prompt_and_get_response",
+      "source": "gemini_coder_web/browser_actions.py",
+      "file_path": "gemini_coder_web/browser_actions.py",
+      "tokens": 171,
+      "ts": "2026-04-06T20:35:37.877485+00:00"
+    },
+    {
+      "name": "_on_expand_send",
+      "source": "gemini_coder_web/ui/app_web.py",
+      "file_path": "gemini_coder_web/ui/app_web.py",
+      "tokens": 665,
+      "ts": "2026-04-06T20:35:37.964012+00:00"
+    },
+    {
+      "name": "wait_for_generation_done",
+      "source": "gemini_coder_web/browser_actions.py",
+      "file_path": "gemini_coder_web/browser_actions.py",
+      "tokens": 343,
+      "ts": "2026-04-06T20:35:38.046025+00:00"
+    },
+    {
+      "name": "main",
+      "source": "__main__.py",
+      "file_path": "__main__.py",
+      "tokens": 60,
+      "ts": "2026-04-06T20:35:38.126010+00:00"
+    },
+    {
+      "name": "switch_model_openrouter",
+      "source": "gemini_coder_web/browser_actions.py",
+      "file_path": "gemini_coder_web/browser_actions.py",
+      "tokens": 594,
+      "ts": "2026-04-06T20:35:38.204539+00:00"
+    },
+    {
+      "name": "_on_add_task",
+      "source": "gemini_coder_web/ui/app_web.py",
+      "file_path": "gemini_coder_web/ui/app_web.py",
+      "tokens": 237,
+      "ts": "2026-04-06T20:35:38.284060+00:00"
+    },
+    {
+      "name": "scan_github_sources",
+      "source": "claude_backend/scanners/github.py",
+      "file_path": "claude_backend/scanners/github.py",
+      "tokens": 286,
+      "ts": "2026-04-06T20:48:55.176884+00:00"
+    },
+    {
+      "name": "list_candidate_windows",
+      "source": "gemini_coder_web/window_manager.py",
+      "file_path": "gemini_coder_web/window_manager.py",
+      "tokens": 392,
+      "ts": "2026-04-06T20:48:55.286403+00:00"
+    },
+    {
+      "name": "launch_chrome_with_cdp",
+      "source": "cdp_client.py",
+      "file_path": "cdp_client.py",
+      "tokens": 466,
+      "ts": "2026-04-06T20:48:55.397918+00:00"
+    },
+    {
+      "name": "wait_for_response",
+      "source": "cdp_client.py",
+      "file_path": "cdp_client.py",
+      "tokens": 934,
+      "ts": "2026-04-06T20:48:55.511062+00:00"
+    }
+  ],
+  "clipboard_copies": [
+    {
+      "template": "Bug fix",
+      "items": 8,
+      "tokens": 1729,
+      "ts": "2026-04-06T16:37:11.571324+00:00"
+    },
+    {
+      "template": "Reference context",
+      "items": 9,
+      "tokens": 2960,
+      "ts": "2026-04-06T20:35:51.636348+00:00"
+    },
+    {
+      "template": "Code review",
+      "items": 13,
+      "tokens": 5086,
+      "ts": "2026-04-06T20:49:12.816308+00:00"
+    },
+    {
+      "template": "Smart (Recommended)",
+      "items": 8,
+      "tokens": 2412,
+      "ts": "2026-04-09T10:21:51.929129+00:00"
+    }
+  ],
+  "connections": {
+    "core": [
+      "load",
+      "embed_in_frame",
+      "_halt_for_access"
+    ],
+    "gui": [
+      "_load_into_ui",
+      "_collect_current"
+    ],
+    "app.py": [
+      "_toggle_theme",
+      "_on_mgba_connection_changed",
+      "_on_settings_changed"
+    ],
+    "gemini_coder_web": [
+      "find_and_position_window",
+      "capture_foreground_and_position",
+      "connect_to_ai_site",
+      "send_prompt_and_get_response",
+      "_on_expand_send",
+      "wait_for_generation_done",
+      "switch_model_openrouter",
+      "_on_add_task",
+      "list_candidate_windows"
+    ],
+    "__main__.py": [
+      "main"
+    ],
+    "claude_backend": [
+      "scan_github_sources"
+    ],
+    "cdp_client.py": [
+      "launch_chrome_with_cdp",
+      "wait_for_response"
+    ]
+  }
+}

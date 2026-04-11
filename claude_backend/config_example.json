@@ -1,0 +1,21 @@
+{
+  "max_file_size_kb": 1024,
+  "max_files": 500,
+  "extensions": [".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".json", ".toml"],
+  "ignore_dirs": [".git", "__pycache__", "node_modules", ".venv", "venv", ".env", ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", "*.egg-info", ".claude"],
+
+  "generate_claude_md": true,
+  "generate_memory": true,
+  "generate_snippets": true,
+  "claude_md_max_lines": 200,
+  "max_snippet_lines": 50,
+  "snippet_min_reuse": 1,
+
+  "github_enabled": false,
+  "github_token": "",
+  "github_sources": [
+    {"name": "openai", "type": "user", "max_repos": 1, "extensions": [".py", ".md"]}
+  ],
+
+  "local_sources": []
+}
