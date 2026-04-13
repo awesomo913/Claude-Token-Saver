@@ -26,6 +26,7 @@ from .generators.memory_files import compute_project_slug, get_memory_dirs
 from .ollama_manager import OllamaManager, RECOMMENDED_MODELS
 from .prompt_builder import build_smart_prompt, detect_intent, review_prompt, ROLES
 from .search import smart_search, get_domain, get_domain_color, get_all_domains
+from .tokenizer import count_tokens
 from .tracker import SessionMemory, TokenTracker
 from .types import CodeBlock, GenerationResult, ProjectAnalysis
 
@@ -229,7 +230,7 @@ class TokenSaverApp(ctk.CTk):
     def _copy_clip(self, text: str, track: bool = True) -> None:
         if not pyperclip: self._toast("pyperclip not installed", "error"); return
         pyperclip.copy(text)
-        est = len(text) * 10 // 32
+        est = count_tokens(text)
         if track:
             proj = self._project_path.name if self._project_path else ""
             self._tracker.record("clipboard_copy", est, project=proj)
@@ -348,7 +349,7 @@ class TokenSaverApp(ctk.CTk):
         self._st_label.configure(text="Bootstrapping..."); self._log("Bootstrap started...")
         def do(): return self._mgr.bootstrap(self._project_path)
         def done(r):
-            tok = sum(len(f) * 10 // 32 for f in r.files_written)
+            tok = sum(count_tokens(f) for f in r.files_written)
             self._tracker.record("bootstrap", tok, project=self._project_path.name,
                                  detail=f"{len(r.files_written)} files")
             self._log(f"Bootstrap: {r.summary} (~{tok:,} tokens saved)")
@@ -362,7 +363,7 @@ class TokenSaverApp(ctk.CTk):
         self._st_label.configure(text="Updating..."); self._log("Prep started...")
         def do(): return self._mgr.prep(self._project_path)
         def done(r):
-            tok = sum(len(f) * 10 // 32 for f in r.files_updated)
+            tok = sum(count_tokens(f) for f in r.files_updated)
             self._tracker.record("prep", tok, project=self._project_path.name,
                                  detail=f"{len(r.files_updated)} files")
             self._log(f"Prep: {r.summary} (~{tok:,} tokens saved)")
@@ -707,7 +708,7 @@ class TokenSaverApp(ctk.CTk):
 
     def _compress_if_needed(self) -> None:
         """If queued code exceeds MAX_PROMPT_TOKENS, compress large blocks to signatures."""
-        total = sum(len(q["content"]) * 10 // 32 for q in self._context_queue)
+        total = sum(count_tokens(q["content"]) for q in self._context_queue)
         if total <= self.MAX_PROMPT_TOKENS:
             return
 
@@ -717,7 +718,7 @@ class TokenSaverApp(ctk.CTk):
             if total <= self.MAX_PROMPT_TOKENS:
                 break
             content = item["content"]
-            old_tokens = len(content) * 10 // 32
+            old_tokens = count_tokens(content)
             if old_tokens < 100:
                 continue  # already small
 
@@ -728,7 +729,7 @@ class TokenSaverApp(ctk.CTk):
                 compressed += f"\n# ... ({len(lines) - 8} more lines, use Read tool to see full file)\n"
                 compressed += "\n".join(lines[-3:])
                 self._context_queue[idx]["content"] = compressed
-                total -= old_tokens - len(compressed) * 10 // 32
+                total -= old_tokens - count_tokens(compressed)
 
     def _smart_find(self) -> None:
         """Manual trigger: clear queue, re-search from scratch."""
@@ -799,7 +800,7 @@ class TokenSaverApp(ctk.CTk):
             return
         self._context_queue.append({"name": name, "source": source, "content": content})
         self._session_mem.record_context_add(name=name, source=source, file_path=source,
-                                             tokens=len(content) * 10 // 32)
+                                             tokens=count_tokens(content))
         self._render_queue(); self._update_preview(); self._update_suggestions()
         self._update_recent(); self._update_token_display()
         if not silent: self._toast(f"Added: {name}", "info")
@@ -1058,7 +1059,7 @@ class TokenSaverApp(ctk.CTk):
         self._preview.configure(state="disabled")
 
         # Token count + intent detection
-        tokens = len(txt) * 10 // 32
+        tokens = count_tokens(txt)
         request = self._get_request_text()
         if request:
             intent = detect_intent(request)
@@ -1086,7 +1087,7 @@ class TokenSaverApp(ctk.CTk):
         else:
             txt = self._assemble("template")
         if not txt: self._toast("Nothing to copy", "warning"); return
-        tok = len(txt) * 10 // 32
+        tok = count_tokens(txt)
         self._copy_clip(txt, track=False)
         proj = self._project_path.name if self._project_path else ""
         self._tracker.record("context_build", tok, project=proj,
@@ -1105,7 +1106,7 @@ class TokenSaverApp(ctk.CTk):
 
         txt = self._assemble("raw")
         if not txt: self._toast("Nothing to copy", "warning"); return
-        tok = len(txt) * 10 // 32
+        tok = count_tokens(txt)
         self._copy_clip(txt, track=False)
         proj = self._project_path.name if self._project_path else ""
         self._tracker.record("clipboard_copy", tok, project=proj, detail="raw")
@@ -1345,12 +1346,12 @@ class TokenSaverApp(ctk.CTk):
         def do():
             a = self._analysis
             snippets = self._snippets
-            total_src = sum(len(f.content) * 10 // 32 for f in a.files)
+            total_src = sum(count_tokens(f.content) for f in a.files)
             p = self._project_path
 
             cmd_tok = 0
             cm = p / "CLAUDE.md"
-            if cm.is_file(): cmd_tok = len(cm.read_text(encoding="utf-8")) * 10 // 32
+            if cm.is_file(): cmd_tok = count_tokens(cm.read_text(encoding="utf-8"))
             mem_dir = p / ".claude" / "memory"
             mem_tok = sum(len(f.read_text(encoding="utf-8"))//4 for f in mem_dir.iterdir() if f.is_file()) if mem_dir.is_dir() else 0
             snip_dir = p / ".claude" / "snippets"
@@ -1396,11 +1397,11 @@ class TokenSaverApp(ctk.CTk):
             hits = 0
             for query, compare_file in scenarios:
                 results = smart_search(snippets, query, max_results=4, min_score=2.0)
-                targeted = sum(len(b.source) * 10 // 32 for _, b in results)
+                targeted = sum(count_tokens(b.source) for _, b in results)
                 names = [b.name for _, b in results][:3]
                 if compare_file:
                     ff = [f for f in a.files if f.path == compare_file]
-                    full = len(ff[0].content) * 10 // 32 if ff else targeted * 3
+                    full = count_tokens(ff[0].content) if ff else targeted * 3
                 else:
                     full = targeted * 3
                 saved = max(0, full - targeted)

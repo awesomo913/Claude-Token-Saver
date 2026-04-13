@@ -6,6 +6,8 @@ and quality gates. Makes Claude give better answers while using fewer tokens.
 
 from __future__ import annotations
 
+from .tokenizer import count_tokens
+
 # ── Roles (auto-assigned based on what the user is doing) ──────────
 
 ROLES = {
@@ -189,8 +191,8 @@ def build_smart_prompt(
 
 def review_prompt(original_request: str, final_prompt: str) -> dict:
     """Analyze the built prompt for token efficiency."""
-    prompt_tokens = len(final_prompt) * 10 // 32
-    request_tokens = max(len(original_request) * 10 // 32, 1)
+    prompt_tokens = count_tokens(final_prompt)
+    request_tokens = max(count_tokens(original_request), 1)
     ratio = prompt_tokens / request_tokens
 
     if prompt_tokens < 500:

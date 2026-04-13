@@ -22,7 +22,7 @@ from .analyzers.code_extractor import extract_blocks
 from .analyzers.pattern_detector import detect_conventions
 from .analyzers.structure_mapper import map_modules
 
-from .generators.claude_md import write_claude_md
+from .generators.claude_md import generate_claude_md, write_claude_md
 from .generators.memory_files import write_memory_files
 from .generators.snippet_library import write_snippet_library
 
@@ -129,41 +129,96 @@ class ClaudeContextManager:
         return result
 
     def prep(self, project_path: Path) -> GenerationResult:
-        """Delta update: only regenerate stale files."""
+        """Delta update: only regenerate outputs whose source files changed.
+
+        Uses manifest SHA-256 hashes to skip unchanged generators.
+        """
         manifest_path = project_path / ".claude" / "manifest.jsonl"
         manifest = Manifest(manifest_path)
 
-        analysis = self.analyze(project_path)
+        # Hash current source files to detect changes
+        from .scanners.project import scan_project_fast_mtimes
+        current_mtimes = scan_project_fast_mtimes(project_path, self.config)
+
+        # Compare against last prep's source snapshot
+        last_snapshot_path = project_path / ".claude" / "source_snapshot.json"
+        source_changed = True
+        if last_snapshot_path.is_file():
+            import json
+            try:
+                old = json.loads(last_snapshot_path.read_text(encoding="utf-8"))
+                source_changed = (old != current_mtimes)
+            except (json.JSONDecodeError, OSError):
+                pass
+
         result = GenerationResult()
+
+        if not source_changed:
+            logger.info("Prep: no source files changed, skipping regeneration")
+            result.files_skipped.append("(all outputs unchanged)")
+            return result
+
+        # Source changed — do full analysis and regenerate
+        analysis = self.analyze(project_path)
 
         if self.config.generate_claude_md:
             try:
-                wrote = write_claude_md(analysis, self.config.claude_md_max_lines)
-                path = str(analysis.root / "CLAUDE.md")
-                if wrote:
-                    result.files_updated.append(path)
+                content = generate_claude_md(analysis, self.config.claude_md_max_lines)
+                path_str = str(analysis.root / "CLAUDE.md")
+                if manifest.needs_update(path_str, content):
+                    write_claude_md(analysis, self.config.claude_md_max_lines)
+                    manifest.record(path_str, content=content, generator="prep")
+                    result.files_updated.append(path_str)
                 else:
-                    result.files_skipped.append(path)
+                    result.files_skipped.append(path_str)
             except Exception as e:
                 result.errors.append(f"CLAUDE.md: {e}")
 
         if self.config.generate_memory:
             try:
-                written = write_memory_files(analysis)
-                result.files_updated.extend(written)
+                from .generators.memory_files import generate_memory_files, get_memory_dirs
+                files = generate_memory_files(analysis)
+                claude_dir, project_dir = get_memory_dirs(analysis.root)
+                for target_dir in [claude_dir, project_dir]:
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    for filename, content in files.items():
+                        path_str = str(target_dir / filename)
+                        if manifest.needs_update(path_str, content):
+                            (target_dir / filename).write_text(content, encoding="utf-8")
+                            manifest.record(path_str, content=content, generator="prep")
+                            result.files_updated.append(path_str)
+                        else:
+                            result.files_skipped.append(path_str)
             except Exception as e:
                 result.errors.append(f"memory: {e}")
 
         if self.config.generate_snippets:
             try:
-                written = write_snippet_library(analysis, self.config.max_snippet_lines)
-                result.files_updated.extend(written)
+                from .generators.snippet_library import generate_snippet_library
+                snippets = generate_snippet_library(analysis, self.config.max_snippet_lines)
+                base = analysis.root / ".claude" / "snippets"
+                for rel_path, content in snippets.items():
+                    full = base / rel_path
+                    path_str = str(full)
+                    if manifest.needs_update(path_str, content):
+                        full.parent.mkdir(parents=True, exist_ok=True)
+                        full.write_text(content, encoding="utf-8")
+                        manifest.record(path_str, content=content, generator="prep")
+                        result.files_updated.append(path_str)
+                    else:
+                        result.files_skipped.append(path_str)
             except Exception as e:
                 result.errors.append(f"snippets: {e}")
 
-        for f in result.files_updated:
-            manifest.record(f, content="", generator="prep")
         manifest.save()
+
+        # Save source snapshot for next delta check
+        import json
+        last_snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        last_snapshot_path.write_text(
+            json.dumps(current_mtimes, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
         logger.info("Prep complete: %s", result.summary)
         return result
