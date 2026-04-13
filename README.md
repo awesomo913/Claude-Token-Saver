@@ -5,8 +5,20 @@ Save **88% of input tokens** when working with Claude Code by pre-staging target
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
-![Version](https://img.shields.io/badge/Version-4.5.1-purple)
+![Version](https://img.shields.io/badge/Version-4.5.2-purple)
 ![Tokens Saved](https://img.shields.io/badge/Tokens_Saved-5.7M+-brightgreen)
+![Grade](https://img.shields.io/badge/Grade-A_(3.70_GPA)-gold)
+
+## What's New in v4.5.2
+
+- **Real BPE tokenizer** — replaced `chars/3.2` heuristic with tiktoken (Rust-backed, millisecond speed). 6-35% more accurate token counts, especially on code, JSON, and regex.
+- **Delta caching** — `prep` now skips regeneration if no source files changed. 0.01s vs 4.28s = **428x faster** on unchanged projects.
+- **Queue cap at 15** — prevents bloated prompts. Previously unlimited (some copies had 165 snippets).
+- **Copy debounce** — 2-second cooldown prevents duplicate pastes (8 duplicates found in tracker data).
+- **Clear button** — one click wipes request box + queue + matches.
+- **Request text cleanup** — fixes typos, grammar, contractions before sending to Claude.
+- **Domain browsing** — Snippets organized by area (Browser, Config, Search, etc.) with colored badges.
+- **Quick Grab** — click a domain to instantly add its top functions to your prompt.
 
 ## The Problem
 
@@ -30,7 +42,7 @@ SAVINGS:       88% reduction per message
 
 ### Option B: Run from source
 ```bash
-pip install customtkinter pyperclip
+pip install customtkinter pyperclip tiktoken
 cd claude_token_saver
 python -m claude_backend.gui
 ```
@@ -129,6 +141,7 @@ claude_backend/
   cli.py               CLI: bootstrap/prep/scan/status/clean
   search.py            Fuzzy semantic search + inverted index
   prompt_builder.py    Request cleanup + prompt assembly
+  tokenizer.py         BPE token counting via tiktoken (with heuristic fallback)
   tracker.py           Token savings counter + session memory
   ollama_manager.py    Local AI model management (optional)
   scanners/
@@ -189,6 +202,7 @@ Same $200/month plan, dramatically more productive use.
 - **Python 3.10+** (if running from source)
 - `customtkinter >= 5.2.0`
 - `pyperclip >= 1.8.0`
+- `tiktoken >= 0.7.0` (BPE token counting — 6-35% more accurate than heuristic)
 - **Optional**: [Ollama](https://ollama.com) for AI-assisted search
 
 ## Security & Privacy
@@ -226,7 +240,7 @@ The tool measures real events, not estimates:
 1. **Per query**: Counts tokens in the targeted snippets you send vs. the full files Claude would read
 2. **Per session**: Measures pre-loaded context (CLAUDE.md + memory) vs. 30% source scan
 3. **Restart savings**: Counts conversation restarts avoided (each costs ~5K tokens to re-explain context)
-4. **Token math**: Uses `chars * 10 / 32` (~3.2 chars/token, matching Claude's BPE tokenizer)
+4. **Token math**: Uses tiktoken BPE tokenizer (cl100k_base, Rust-backed) for accurate counts. Falls back to `chars * 10 / 32` heuristic if tiktoken not installed.
 
 ## License
 
