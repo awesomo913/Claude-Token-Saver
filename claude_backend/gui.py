@@ -202,6 +202,11 @@ class TokenSaverApp(ctk.CTk):
         for k, b in self._nav_btns.items():
             b.configure(fg_color=C["side_act"] if k == name else "transparent",
                         text_color=C["fg"] if k == name else C["fg2"])
+        # Refresh dynamic elements when switching to their tab
+        if name == "builder" and self._snippets:
+            self._rebuild_grab_buttons()
+        elif name == "snippets" and self._snippets:
+            self._rebuild_domain_tabs()
 
     def _toast(self, msg: str, lv: str = "info") -> None:
         cm = {"success": C["ok"], "warning": C["warn"], "error": C["err"], "info": C["accent"]}
@@ -229,7 +234,9 @@ class TokenSaverApp(ctk.CTk):
 
     def _copy_clip(self, text: str, track: bool = True) -> None:
         if not pyperclip: self._toast("pyperclip not installed", "error"); return
-        pyperclip.copy(text)
+        # Normalize line endings for Windows clipboard
+        clean = text.replace("\r\n", "\n").replace("\r", "\n")
+        pyperclip.copy(clean)
         est = count_tokens(text)
         if track:
             proj = self._project_path.name if self._project_path else ""
@@ -561,8 +568,8 @@ class TokenSaverApp(ctk.CTk):
         self._tok_lbl = ctk.CTkLabel(tmpl_row, text="~0 tokens", font=(F, 12, "bold"), text_color=C["accent"])
         self._tok_lbl.pack(side="right")
 
-        self._preview = ctk.CTkTextbox(right, font=(M, 10), fg_color=C["card"], border_color=C["border"],
-                                       border_width=1, text_color="#d4d4d4", state="disabled")
+        self._preview = ctk.CTkTextbox(right, font=(M, 11), fg_color=C["card"], border_color=C["border"],
+                                       border_width=1, text_color="#d4d4d4", state="disabled", wrap="word")
         self._preview.pack(fill="both", expand=True, pady=(0, 6))
 
         # ═══ BOTTOM: Big copy button ═══
