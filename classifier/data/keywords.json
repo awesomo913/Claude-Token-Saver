@@ -1,0 +1,90 @@
+{
+    "free_signals": {
+        "boilerplate": {
+            "keywords": ["scaffold", "starter template", "boilerplate", "skeleton", "create a basic", "hello world", "simple example", "minimal app", "starter project", "setup project"],
+            "weight": 1.0
+        },
+        "widget_layout": {
+            "keywords": ["add button", "add label", "sidebar", "grid layout", "navbar", "header component", "footer component", "place widget", "pack widget", "form layout", "card component", "modal dialog", "dropdown menu", "checkbox", "radio button", "text input field"],
+            "weight": 1.0
+        },
+        "data_entry": {
+            "keywords": ["table of", "list of all", "populate", "fill in", "pokemon data", "define all", "encounter table", "move list", "item list", "species list", "create array of", "hardcode the values", "add entries for", "trainer parties"],
+            "weight": 1.2
+        },
+        "framework_port": {
+            "keywords": ["port to", "convert from", "rewrite in", "translate to", "migrate from tkinter", "convert to kivy", "make android version", "make web version"],
+            "weight": 1.0
+        },
+        "styling": {
+            "keywords": ["dark mode", "light mode", "theme", "color scheme", "padding", "margin", "font size", "border radius", "hover effect", "gradient", "css variable", "background color", "foreground color", "material design"],
+            "weight": 0.9
+        },
+        "documentation": {
+            "keywords": ["write readme", "add docstring", "document the", "comment the code", "jsdoc", "type hints", "write docs for", "api documentation", "usage example"],
+            "weight": 1.0
+        },
+        "renaming": {
+            "keywords": ["rename all", "refactor names", "naming convention", "snake_case", "camelCase", "change variable name", "rename function", "rename class"],
+            "weight": 1.1
+        },
+        "simple_crud": {
+            "keywords": ["add field", "update record", "delete entry", "form for", "save to json", "load from json", "read csv", "write csv", "basic crud", "simple database"],
+            "weight": 0.8
+        },
+        "formatting": {
+            "keywords": ["format the output", "pretty print", "align columns", "sort alphabetically", "reorder list", "indent", "clean up whitespace"],
+            "weight": 1.0
+        },
+        "simple_script": {
+            "keywords": ["batch rename files", "download images", "scrape urls", "parse html", "regex for", "find and replace", "file watcher", "copy files matching"],
+            "weight": 0.7
+        }
+    },
+    "claude_signals": {
+        "architecture": {
+            "keywords": ["architecture", "design pattern", "module structure", "dependency injection", "service layer", "repository pattern", "event-driven", "microservice", "plugin system", "abstraction layer"],
+            "weight": 1.0
+        },
+        "debugging": {
+            "keywords": ["segfault", "race condition", "memory leak", "deadlock", "gdb", "core dump", "stack trace", "breakpoint", "valgrind", "undefined behavior", "heap corruption", "use after free"],
+            "weight": 1.2
+        },
+        "binary_protocol": {
+            "keywords": ["struct pack", "byte offset", "rom address", "hex dump", "binary format", "gba memory", "palette slot", "sprite tile", "dma transfer", "iwram", "ewram", "little endian"],
+            "weight": 1.3
+        },
+        "novel_algorithm": {
+            "keywords": ["algorithm for", "novel approach", "custom data structure", "optimize the", "time complexity", "space complexity", "dynamic programming", "graph traversal", "a* pathfinding"],
+            "weight": 1.0
+        },
+        "security": {
+            "keywords": ["vulnerability", "injection", "authentication", "csrf", "xss", "encryption", "sandbox", "privilege escalation", "buffer overflow", "input sanitization"],
+            "weight": 1.1
+        },
+        "complex_state": {
+            "keywords": ["state machine", "concurrent", "async coordination", "event loop", "pub/sub", "observer pattern", "mutex", "semaphore", "thread pool", "actor model"],
+            "weight": 1.0
+        },
+        "system_integration": {
+            "keywords": ["integrate with", "api design", "protocol", "handshake", "wire format", "websocket", "grpc", "message queue", "oauth flow", "webhook"],
+            "weight": 0.9
+        },
+        "multi_file_refactor": {
+            "keywords": ["refactor across", "move to separate module", "extract class", "split into files", "reorganize project", "circular import", "cross-module"],
+            "weight": 1.0
+        },
+        "complex_debugging": {
+            "keywords": ["works in staging but not prod", "intermittent failure", "flaky test", "only happens under load", "timing-dependent", "heisenbug"],
+            "weight": 1.2
+        }
+    },
+    "domain_modifiers": {
+        "gba_memory": {"bias": "claude", "strength": 0.3, "keywords": ["gba", "gameboy", "rom hack", "pokeemerald", "decomp"]},
+        "compiler": {"bias": "claude", "strength": 0.25, "keywords": ["compiler", "ast", "parser", "lexer", "codegen"]},
+        "cryptography": {"bias": "claude", "strength": 0.2, "keywords": ["crypto", "cipher", "hash", "signature", "key exchange"]},
+        "html_css": {"bias": "free", "strength": 0.2, "keywords": ["html", "css", "tailwind", "bootstrap", "flexbox"]},
+        "json_data": {"bias": "free", "strength": 0.15, "keywords": ["json file", "yaml", "toml", "config file", "data file"]},
+        "simple_gui": {"bias": "free", "strength": 0.15, "keywords": ["tkinter", "streamlit", "gradio", "simple ui"]}
+    }
+}

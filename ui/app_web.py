@@ -30,6 +30,7 @@ from ..ai_profiles import AIProfile, PRESET_PROFILES, get_profile_names, get_pro
 from ..session_manager import SessionManager, Session, CORNERS
 from ..auto_save import save_task_output
 from ..broadcast import BroadcastController, BroadcastConfig, engineer_prompt, PROMPT_ENGINE_AVAILABLE
+from ..smart_router import SMART_ROUTER_AVAILABLE
 from ..window_manager import (
     list_candidate_windows, get_foreground_window,
     get_window_title, capture_foreground_and_position,
@@ -658,6 +659,30 @@ class GeminiCoderWebApp(GeminiCoderApp):
         self._bc_build_target.pack(side="left", padx=SPACING["sm"])
         self._bc_build_target.set("PC Desktop App")
 
+        # Smart Route toggle
+        sr_row = ctk.CTkFrame(bc_card, fg_color="transparent")
+        sr_row.pack(fill="x", padx=SPACING["lg"], pady=4)
+        self._bc_smart_route = ctk.CTkCheckBox(
+            sr_row,
+            text="\U0001F9E0 Smart Route (easy\u2192Gemini, hard\u2192Claude)",
+            font=("Segoe UI", 12),
+            text_color=c["fg_primary"],
+            fg_color="#8e44ad",
+            hover_color="#9b59b6",
+        )
+        self._bc_smart_route.pack(side="left")
+        if not SMART_ROUTER_AVAILABLE:
+            self._bc_smart_route.configure(state="disabled")
+            ctk.CTkLabel(sr_row, text="(prompt_router not found)",
+                         font=("Segoe UI", 10),
+                         text_color=c.get("fg_muted", "#888")).pack(side="left", padx=4)
+
+        self._bc_sr_status = ctk.CTkLabel(
+            sr_row, text="", font=("Segoe UI", 10),
+            text_color=c.get("fg_muted", "#888"),
+        )
+        self._bc_sr_status.pack(side="left", padx=8)
+
         # Buttons
         bc_btn_row = ctk.CTkFrame(bc_card, fg_color="transparent")
         bc_btn_row.pack(fill="x", padx=SPACING["lg"], pady=(4, SPACING["md"]))
@@ -999,10 +1024,25 @@ class GeminiCoderWebApp(GeminiCoderApp):
         if cdp_sessions > 0:
             self._toast(f"{cdp_sessions} session(s) using CDP (no traffic lock needed)", "info")
 
+        is_smart = bool(self._bc_smart_route.get()) and SMART_ROUTER_AVAILABLE
+
+        # Show classification preview if smart routing
+        if is_smart:
+            try:
+                from ..smart_router import SmartRouter
+                router = SmartRouter()
+                cls = router.classify(task)
+                self._bc_sr_status.configure(
+                    text=f"{cls.routing.upper()} | complexity={cls.complexity_score:.2f} | "
+                         f"{', '.join(cls.task_types[:3])}")
+            except Exception:
+                pass
+
         config = BroadcastConfig(
             task=task,
             build_target=self._bc_build_target.get(),
-            endless=True,
+            endless=not is_smart,  # Smart route runs once, not endless
+            smart_route=is_smart,
         )
 
         self._broadcast.start(config)

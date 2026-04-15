@@ -36,6 +36,20 @@ except ImportError:
     logger.warning("prompt_engine not found — prompts will be sent raw")
 
 
+def _looks_like_code(text: str) -> bool:
+    """Check if response contains code markers. Returns False when the AI
+    has lost context and is producing random chat instead of code."""
+    if not text or len(text.strip()) < 50:
+        return False
+    # Look for common code indicators
+    markers = ["def ", "class ", "import ", "function ", "const ", "var ", "let ",
+               "```", "return ", "if __name__", "#!/", "async ", "struct ", "#include",
+               "from ", "self.", "console.", "print(", "for ", "while "]
+    text_lower = text.lower()
+    hits = sum(1 for m in markers if m.lower() in text_lower)
+    return hits >= 2  # at least 2 code markers
+
+
 def engineer_prompt(
     task: str,
     build_target: str = "PC Desktop App",
@@ -143,6 +157,12 @@ def engineer_improvement_prompt(
     return prompt
 
 
+try:
+    from .smart_router import SmartRouter, SMART_ROUTER_AVAILABLE
+except ImportError:
+    SMART_ROUTER_AVAILABLE = False
+
+
 @dataclass
 class BroadcastConfig:
     """Configuration for a broadcast run."""
@@ -154,6 +174,7 @@ class BroadcastConfig:
     endless: bool = True
     max_iterations: int = 999  # Safety cap
     time_limit_minutes: int = 0  # 0 = no limit
+    smart_route: bool = False  # Classify + split: free parts → Gemini, hard → Claude
 
 
 class BroadcastController:
@@ -239,6 +260,17 @@ class BroadcastController:
         # Model switching is done manually by the user before broadcast.
         # Auto-switching was unreliable (typed model names into chat input).
         # The UI shows a reminder: "Pick a different model on each window first."
+
+        # Smart routing: single orchestrated thread instead of per-session
+        if config.smart_route and SMART_ROUTER_AVAILABLE:
+            t = threading.Thread(
+                target=self._smart_route_loop,
+                args=(sessions, config, engineered),
+                daemon=True,
+            )
+            self._threads.append(t)
+            t.start()
+            return
 
         # Launch a thread per session
         for session in sessions:
@@ -371,6 +403,20 @@ class BroadcastController:
                     time.sleep(5)
                     continue
 
+                # Context-loss guard: detect when AI stops producing code
+                if result and not _looks_like_code(result):
+                    logger.warning("[%s] Context loss detected at iteration %d — "
+                                   "output has no code markers. Stopping loop.",
+                                   ai_name, iteration + 1)
+                    if self._on_output:
+                        self._on_output(
+                            sid, "system",
+                            f"\n[{ai_name}] STOPPED: AI lost context — "
+                            f"output at iteration {iteration + 1} contains no code. "
+                            f"Last good output was iteration {iteration}.\n"
+                        )
+                    break
+
                 # Store actual result and auto-save
                 self._results[sid] = result
                 if self._on_output:
@@ -393,3 +439,175 @@ class BroadcastController:
             elapsed = time.time() - start_time
             logger.info("[%s] Broadcast loop ended: %d iterations in %.0fs",
                          ai_name, count, elapsed)
+
+    def _smart_route_loop(
+        self, sessions: list, config: BroadcastConfig, initial_prompt: str
+    ) -> None:
+        """Classify → split → send easy parts to free model → chain into Claude."""
+        start_time = time.time()
+
+        try:
+            router = SmartRouter()
+        except Exception as e:
+            logger.error("SmartRouter init failed: %s — falling back to normal broadcast", e)
+            for session in sessions:
+                if session.is_configured:
+                    self._session_loop(session, config, initial_prompt)
+            return
+
+        try:
+            # 1. Classify
+            cls = router.classify(config.task)
+            if self._on_output:
+                self._on_output("smart_route", "system",
+                    f"[SmartRoute] Routing: {cls.routing.upper()} | "
+                    f"Complexity: {cls.complexity_score:.2f} | "
+                    f"Confidence: {cls.confidence:.2f}\n"
+                    f"  Types: {', '.join(cls.task_types)}\n"
+                    f"  Reasoning: {cls.reasoning}\n{'='*50}\n")
+
+            # 2. Find sessions
+            free_sess = router.find_free_session(sessions)
+            claude_sess = router.find_claude_session(sessions)
+
+            free_name = free_sess.ai_profile.name if free_sess else "none"
+            claude_name = claude_sess.ai_profile.name if claude_sess else "none"
+            logger.info("[SmartRoute] Free=%s, Claude=%s, routing=%s",
+                        free_name, claude_name, cls.routing)
+
+            # 3. Route based on classification
+            if cls.routing == "free":
+                target = free_sess or claude_sess or (sessions[0] if sessions else None)
+                if target:
+                    self._smart_run_single(target, config, initial_prompt, "Free", start_time)
+                return
+
+            if cls.routing == "claude":
+                target = claude_sess or free_sess or (sessions[0] if sessions else None)
+                if target:
+                    self._smart_run_single(target, config, initial_prompt, "Claude", start_time)
+                    # Enter improvement loop on Claude
+                    if config.endless and not self._stop_event.is_set():
+                        self._session_loop(target, config, initial_prompt)
+                return
+
+            # 4. Split mode — the main event
+            rr = router.split(config.task, cls)
+
+            if self._on_output:
+                free_count = sum(1 for st in rr.subtasks if st.routing == "free")
+                claude_count = sum(1 for st in rr.subtasks if st.routing == "claude")
+                self._on_output("smart_route", "system",
+                    f"[SmartRoute] Split: {free_count} free + {claude_count} claude subtasks\n"
+                    f"  Free tokens: ~{rr.free_token_estimate:,} | Claude tokens: ~{rr.claude_token_estimate:,}\n"
+                    f"  Savings: {rr.savings_pct:.0%}\n{'-'*40}\n")
+
+            # 4a. Send free parts to Gemini
+            free_response = ""
+            if rr.free_prompt and free_sess:
+                if self._on_output:
+                    self._on_output(free_sess.session_id, "system",
+                        f"[{free_name}] Handling free-model subtasks...\n")
+
+                free_response = free_sess.client.generate(
+                    prompt=rr.free_prompt,
+                    system_instruction="Complete the task directly with clean, working code.",
+                    on_progress=lambda t, s=free_sess.session_id: (
+                        self._on_output(s, "code", t) if self._on_output else None),
+                )
+                self._results[free_sess.session_id] = free_response
+                self._save_result(free_sess, config.task, 1,
+                                  "SmartRoute_Free", free_response, start_time)
+
+                if self._on_output:
+                    self._on_output(free_sess.session_id, "result", free_response)
+
+            elif rr.free_prompt and not free_sess:
+                logger.warning("[SmartRoute] Free prompt exists but no free session — skipping")
+
+            if self._stop_event.is_set():
+                return
+
+            # 4b. Send hard parts to Claude, enriched with free results
+            if rr.claude_prompt and claude_sess:
+                enriched = router.inject_free_results(rr.claude_prompt, free_response)
+
+                if self._on_output:
+                    self._on_output(claude_sess.session_id, "system",
+                        f"[{claude_name}] Handling Claude subtasks "
+                        f"(with {len(free_response):,} chars of free-model context)...\n")
+
+                claude_response = claude_sess.client.generate(
+                    prompt=enriched,
+                    system_instruction=(
+                        "You are an expert coding assistant. The easy parts were already "
+                        "handled by a free model (included above). Focus on the complex "
+                        "parts that require your expertise."
+                    ),
+                    on_progress=lambda t, s=claude_sess.session_id: (
+                        self._on_output(s, "code", t) if self._on_output else None),
+                )
+                self._results[claude_sess.session_id] = claude_response
+                self._save_result(claude_sess, config.task, 1,
+                                  "SmartRoute_Claude", claude_response, start_time)
+
+                if self._on_output:
+                    self._on_output(claude_sess.session_id, "result", claude_response)
+
+                # Save combined results
+                from .auto_save import save_smart_route_output
+                save_smart_route_output(
+                    title=config.task,
+                    free_output=free_response,
+                    free_ai_name=free_name,
+                    claude_output=claude_response,
+                    claude_ai_name=claude_name,
+                    classification_summary=(
+                        f"{cls.routing} | complexity={cls.complexity_score:.2f} | "
+                        f"types={','.join(cls.task_types)}"),
+                    elapsed_seconds=time.time() - start_time,
+                )
+
+            elif rr.claude_prompt and not claude_sess:
+                # No Claude session — send to whatever is available
+                fallback = free_sess or (sessions[0] if sessions else None)
+                if fallback:
+                    logger.warning("[SmartRoute] No Claude session — using %s as fallback",
+                                   fallback.ai_profile.name)
+                    self._smart_run_single(fallback, config, rr.claude_prompt,
+                                           "Fallback", start_time)
+
+        except Exception as e:
+            logger.error("[SmartRoute] Error: %s", e)
+            if self._on_output:
+                self._on_output("smart_route", "error", f"[SmartRoute] Fatal: {e}\n")
+        finally:
+            elapsed = time.time() - start_time
+            logger.info("[SmartRoute] Completed in %.0fs", elapsed)
+            self._running = False
+            if self._on_complete:
+                self._on_complete(self._iteration_counts)
+
+    def _smart_run_single(
+        self, session, config: BroadcastConfig, prompt: str,
+        label: str, start_time: float
+    ) -> None:
+        """Send a prompt to a single session (used by smart routing)."""
+        sid = session.session_id
+        ai_name = session.ai_profile.name
+
+        if self._on_output:
+            self._on_output(sid, "system",
+                f"[{ai_name}] SmartRoute → {label}\n{'='*50}\n")
+
+        result = session.client.generate(
+            prompt=prompt,
+            system_instruction="Complete the task directly with clean, working code.",
+            on_progress=lambda t, s=sid: (
+                self._on_output(s, "code", t) if self._on_output else None),
+        )
+        self._results[sid] = result
+        self._save_result(session, config.task, 1,
+                          f"SmartRoute_{label}", result, start_time)
+        if self._on_output:
+            self._on_output(sid, "result", result)

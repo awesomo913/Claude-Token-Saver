@@ -3,16 +3,16 @@
 
 ## Overview
 
-- **Files**: 106 (.py (86), .json (10), .md (6), .js (3), .toml (1))
-- **Entry points**: `__main__.py`, `ai/__main__.py`, `cdp_test.py`, `claude_backend/analyzers/structure_mapper.py`, `claude_backend/cli.py`
+- **Files**: 123 (.py (102), .json (10), .md (7), .js (3), .toml (1))
+- **Entry points**: `broadcast.py`, `cdp_test.py`, `__main__.py`, `ai/__main__.py`, `claude_backend/cli.py`
 - **Dependencies**: customtkinter, pyautogui, pyperclip, pystray, Pillow, psutil, websocket-client, customtkinter, pyautogui, pyperclip
-- **Key files**: `CLAUDE.md`, `pyproject.toml`, `requirements.txt`
+- **Key files**: `README.md`, `CLAUDE.md`, `pyproject.toml`, `requirements.txt`, `.gitignore`
 
 ## Structure
 
 ```
 ai/  (2 files)
-claude_backend/  (21 files)
+claude_backend/  (27 files)
   analyzers/  (4 files)
   generators/  (4 files)
   scanners/  (4 files)
@@ -20,7 +20,7 @@ gemini_coder/  (11 files)
   ui/  (3 files)
 gemini_coder_web/  (14 files)
   ui/  (2 files)
-scripts/  (2 files)
+scripts/  (11 files)
 sessions/  (37 files)
   ClaudeProjects/  (37 files)
 tests/  (3 files)
@@ -41,6 +41,7 @@ ui/  (2 files)
 - `broadcast.py` -- Broadcast mode — send a task to all active sessions and loop endlessly
 - `browser_actions.py` -- Low-level browser actions for controlling ANY AI web chat
 - `browser_client.py` -- Backward compatibility — imports from universal_client
+- `build_exe.py` -- Build script for Claude Token Saver standalone exe
 - `cdp_client.py` -- Chrome DevTools Protocol (CDP) client for browser automation
 - `cdp_test.py` -- CDP diagnostic and testing utility [entry]
 - `claude_backend/analyzers/code_extractor.py` -- Code block extraction using AST for Python and state-machine for JS/TS
@@ -52,11 +53,17 @@ ui/  (2 files)
 - `claude_backend/generators/claude_md.py` -- Generate a CLAUDE.md file from project analysis
 - `claude_backend/generators/memory_files.py` -- Generate Claude Code memory files for persistent cross-session context
 - `claude_backend/generators/snippet_library.py` -- Extract and organize reusable code snippets into a library
+- `claude_backend/gui.py` -- Claude Token Saver — standalone GUI for managing project context [entry]
 - `claude_backend/manifest.py` -- Delta-aware manifest for tracking generated files with SHA-256 hashing
+- `claude_backend/ollama_manager.py` -- Ollama model manager — list, pull, delete, select models via HTTP API
+- `claude_backend/prompt_builder.py` -- Smart prompt builder — integrates Prompt Architect logic for better prompts
 - `claude_backend/scanners/github.py` -- Optional GitHub scanner for pulling code from public repos
 - `claude_backend/scanners/local.py` -- Local filesystem scanner for additional source directories
 - `claude_backend/scanners/project.py` -- Project scanner: discovers and catalogs all files in a target project [entry]
+- `claude_backend/search.py` -- Fuzzy semantic search engine for code snippets
 - `claude_backend/storage.py` -- Project storage with pathlib, proper logging, and manifest tracking
+- `claude_backend/tokenizer.py` -- Accurate token counting with BPE tokenizer + fast fallback
+- `claude_backend/tracker.py` -- Token savings tracker and session context memory
 - `claude_backend/types.py` -- Shared data types for claude_backend
 - `gemini_coder/config.py` -- Configuration management for Gemini Coder
 - `gemini_coder/expander.py` -- Expander - task expansion for Gemini Coder
@@ -69,13 +76,6 @@ ui/  (2 files)
 - `gemini_coder/ui/theme.py` -- Theme and styling for Gemini Coder UI
 - `gemini_coder_web/ai_profiles.py` -- AI profiles for universal browser automation
 - `gemini_coder_web/auto_save.py` -- Auto-save task output to Downloads folder as .txt files
-- `gemini_coder_web/bridge.py`
-- `gemini_coder_web/broadcast.py` -- Broadcast mode — send a task to all active sessions and loop endlessly
-- `gemini_coder_web/browser_actions.py` -- Low-level browser actions for controlling ANY AI web chat
-- `gemini_coder_web/browser_client.py` -- Backward compatibility — imports from universal_client
-- `gemini_coder_web/cdp_client.py` -- Chrome DevTools Protocol (CDP) client for browser automation
-- `gemini_coder_web/session_manager.py` -- Session manager — coordinates up to 4 AI browser sessions
-- `gemini_coder_web/ui/app_web.py` -- Autocoder - Universal multi-session browser AI automation
 
 ## Snippets
 
