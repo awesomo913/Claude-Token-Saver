@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     p_prep = sub.add_parser("prep", help="Delta update -- regenerate only stale files")
     p_prep.add_argument("project_path", type=Path, help="Path to target project")
     p_prep.add_argument("--force", action="store_true", help="Regenerate all")
+    p_prep.add_argument("--quiet", action="store_true", help="Suppress output (for hook use)")
 
     # scan
     p_scan = sub.add_parser("scan", help="Analyze project and print report")
@@ -90,13 +91,14 @@ def main(argv: list[str] | None = None) -> int:
 
     elif args.command == "prep":
         result = mgr.prep(args.project_path)
-        print(json.dumps({
-            "command": "prep",
-            "updated": len(result.files_updated),
-            "skipped": len(result.files_skipped),
-            "errors": result.errors,
-            "summary": result.summary,
-        }, indent=2))
+        if not getattr(args, "quiet", False):
+            print(json.dumps({
+                "command": "prep",
+                "updated": len(result.files_updated),
+                "skipped": len(result.files_skipped),
+                "errors": result.errors,
+                "summary": result.summary,
+            }, indent=2))
 
     elif args.command == "scan":
         analysis = mgr.analyze(args.project_path)

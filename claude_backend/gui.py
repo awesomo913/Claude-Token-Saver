@@ -65,6 +65,62 @@ TEMPLATES = {
     ),
 }
 
+AI_TUTORIAL_TEXT = """
+AUTO-INJECT — HOW IT WORKS
+==========================
+
+WHAT IT DOES
+------------
+Installs a hook into Claude Code that runs once per session start.
+The hook silently calls `python -m claude_backend prep` on your
+current project directory, which:
+  - Re-scans your source files
+  - Regenerates CLAUDE.md with current project structure
+  - Regenerates memory files (architecture, patterns, utilities,
+    conventions, hot-functions)
+  - Updates the source snapshot for delta caching
+
+Result: Every Claude Code session starts with fresh context about
+your project WITHOUT you opening the Token Saver GUI.
+
+WHERE THE HOOK LIVES
+--------------------
+It's added to your ~/.claude/settings.json as a SessionStart hook.
+A timestamped backup of settings.json is created before any change.
+
+YOU CAN ALWAYS UNDO IT
+----------------------
+Click the Uninstall button to remove the hook. The original settings
+are preserved in the timestamped .backup file next to settings.json.
+
+WHAT IT DOES NOT DO
+-------------------
+It cannot intercept your typed prompts mid-session. Claude Code
+doesn't allow that. For per-query targeted snippets (the biggest
+token savings), you still use the Context Builder tab and paste
+the result into Claude Code.
+
+WHAT YOU GAIN
+-------------
+Baseline project context stays fresh automatically. You type a
+request in Claude Code and Claude already knows:
+  - Your project structure
+  - Your coding conventions
+  - Your most-used functions (hot_functions.md)
+  - Reusable utilities and patterns
+
+That's the 5x compression (pre-loaded context) Token Saver always
+provided, now always current without manual prep runs.
+
+IF IT FAILS TO RUN
+------------------
+The hook uses `|| true` so a failed prep never blocks session
+start. Check ~/.claude/projects/<your-slug>/memory/ to see if
+memory files are being regenerated. If not, open this GUI and
+click Prep manually — that's the fallback.
+""".strip()
+
+
 TUTORIAL_TEXT = """
 HOW TO USE CLAUDE TOKEN SAVER
 =============================
@@ -207,6 +263,8 @@ class TokenSaverApp(ctk.CTk):
             self._rebuild_grab_buttons()
         elif name == "snippets" and self._snippets:
             self._rebuild_domain_tabs()
+        elif name == "settings" and hasattr(self, "_ai_status_lbl"):
+            self._ai_refresh_status()
 
     def _toast(self, msg: str, lv: str = "info") -> None:
         cm = {"success": C["ok"], "warning": C["warn"], "error": C["err"], "info": C["accent"]}
@@ -1489,6 +1547,58 @@ class TokenSaverApp(ctk.CTk):
         ctk.CTkLabel(fr, text="Settings", font=(F, 20, "bold"), text_color=C["fg"]).pack(padx=20, pady=(16, 12), anchor="w")
 
         # ═══════════════════════════════════════════════════════════
+        #  AUTO-INJECT SETUP (one-time Claude Code hook installer)
+        # ═══════════════════════════════════════════════════════════
+        ai_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8, border_width=2, border_color=C["ok"])
+        ai_card.pack(fill="x", padx=20, pady=(0, 12))
+
+        ai_hdr = ctk.CTkFrame(ai_card, fg_color="transparent"); ai_hdr.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(ai_hdr, text="Auto-Inject (one-time setup)", font=(F, 14, "bold"),
+                     text_color=C["ok"]).pack(side="left")
+        self._ai_status_lbl = ctk.CTkLabel(ai_hdr, text="Checking...", font=(F, 11), text_color=C["fg3"])
+        self._ai_status_lbl.pack(side="right")
+
+        ai_explain = (
+            "Make Claude Code auto-refresh your project context every session.\n"
+            "After one-click install:\n"
+            "  - Every Claude Code session starts by running prep on your project\n"
+            "  - CLAUDE.md + memory files auto-update with your latest code\n"
+            "  - 'Hot functions' (most-used code) pre-loaded into context\n"
+            "  - You NEVER have to open this GUI again for baseline context\n"
+            "  (You still use the GUI for per-query targeted snippets)"
+        )
+        ctk.CTkLabel(ai_card, text=ai_explain, font=(F, 10),
+                     text_color=C["fg2"], wraplength=720, justify="left"
+                     ).pack(padx=16, pady=(4, 8), anchor="w")
+
+        ai_btn_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        ai_btn_row.pack(fill="x", padx=16, pady=(0, 12))
+        self._ai_install_btn = ctk.CTkButton(
+            ai_btn_row, text="Install Auto-Inject", width=180, height=34,
+            font=(F, 12, "bold"), fg_color=C["ok"],
+            command=self._ai_install,
+        )
+        self._ai_install_btn.pack(side="left", padx=(0, 8))
+        self._ai_uninstall_btn = ctk.CTkButton(
+            ai_btn_row, text="Uninstall", width=100, height=34,
+            font=(F, 11), fg_color=C["err"],
+            command=self._ai_uninstall,
+        )
+        self._ai_uninstall_btn.pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            ai_btn_row, text="Show Tutorial", width=120, height=34,
+            font=(F, 11), fg_color=C["bg2"],
+            command=self._ai_show_tutorial,
+        ).pack(side="left")
+
+        self._ai_tutorial_box = ctk.CTkTextbox(
+            ai_card, font=(M, 10), fg_color=C["input"], text_color=C["fg2"],
+            border_width=0, height=0, state="disabled",
+        )
+        self._ai_tutorial_box.pack(fill="x", padx=16, pady=(0, 12))
+        self._ai_tutorial_visible = False
+
+        # ═══════════════════════════════════════════════════════════
         #  OLLAMA MODEL MANAGER
         # ═══════════════════════════════════════════════════════════
         ollama_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8, border_width=2, border_color=C["purple"])
@@ -1730,6 +1840,72 @@ class TokenSaverApp(ctk.CTk):
         self._run_async(do, done)
 
     # ── Tutorial + settings apply ──────────────────────────────────────
+
+    # ── Auto-Inject handlers ──────────────────────────────────────────
+
+    def _ai_refresh_status(self) -> None:
+        """Check and display auto-inject install status."""
+        try:
+            from . import auto_inject
+        except Exception as e:
+            self._ai_status_lbl.configure(text=f"Module error: {e}", text_color=C["err"])
+            return
+        s = auto_inject.check_status()
+        if not s["settings_exists"]:
+            self._ai_status_lbl.configure(text="settings.json missing", text_color=C["err"])
+            self._ai_install_btn.configure(state="disabled")
+        elif not s["settings_valid"]:
+            self._ai_status_lbl.configure(text=f"settings.json INVALID JSON", text_color=C["err"])
+            self._ai_install_btn.configure(state="disabled")
+        elif s["installed"]:
+            self._ai_status_lbl.configure(text="INSTALLED — running on every session",
+                                          text_color=C["ok"])
+            self._ai_install_btn.configure(state="disabled")
+            self._ai_uninstall_btn.configure(state="normal")
+        else:
+            self._ai_status_lbl.configure(text="Not installed", text_color=C["fg3"])
+            self._ai_install_btn.configure(state="normal")
+            self._ai_uninstall_btn.configure(state="disabled")
+
+    def _ai_install(self) -> None:
+        try:
+            from . import auto_inject
+        except Exception as e:
+            self._toast(f"Module error: {e}", "error"); return
+        ok, msg = auto_inject.install()
+        if ok:
+            self._toast("Auto-inject installed", "success")
+            self._log(f"Auto-inject: {msg}")
+        else:
+            self._toast(f"Install failed: {msg}", "error")
+            self._log(f"Auto-inject install failed: {msg}")
+        self._ai_refresh_status()
+
+    def _ai_uninstall(self) -> None:
+        try:
+            from . import auto_inject
+        except Exception as e:
+            self._toast(f"Module error: {e}", "error"); return
+        ok, msg = auto_inject.uninstall()
+        if ok:
+            self._toast("Auto-inject removed", "info")
+            self._log(f"Auto-inject: {msg}")
+        else:
+            self._toast(msg, "warning")
+        self._ai_refresh_status()
+
+    def _ai_show_tutorial(self) -> None:
+        """Toggle the Auto-Inject tutorial text."""
+        if self._ai_tutorial_visible:
+            self._ai_tutorial_box.configure(height=0)
+            self._ai_tutorial_visible = False
+            return
+        text = AI_TUTORIAL_TEXT
+        self._ai_tutorial_box.configure(state="normal", height=360)
+        self._ai_tutorial_box.delete("1.0", "end")
+        self._ai_tutorial_box.insert("1.0", text)
+        self._ai_tutorial_box.configure(state="disabled")
+        self._ai_tutorial_visible = True
 
     def _toggle_tutorial(self) -> None:
         if self._tut_visible:
