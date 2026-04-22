@@ -126,7 +126,8 @@ class ClaudeContextManager:
         for f in result.files_written:
             try:
                 content = Path(f).read_text(encoding="utf-8", errors="replace")
-            except OSError:
+            except OSError as e:
+                logger.warning("Could not read generated file for manifest: %s: %s", f, e)
                 content = ""
             manifest.record(f, content=content, generator="bootstrap")
         manifest.save()
