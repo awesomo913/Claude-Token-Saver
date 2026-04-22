@@ -6,6 +6,8 @@ and quality gates. Makes Claude give better answers while using fewer tokens.
 
 from __future__ import annotations
 
+import re
+
 from .tokenizer import count_tokens
 
 # ── Roles (auto-assigned based on what the user is doing) ──────────
@@ -72,51 +74,51 @@ def detect_intent(request: str) -> str:
     return best if scores[best] > 0 else "code"
 
 
+# Word-level typo corrections applied before sending requests to Claude.
+# Built from real user typos observed in tracker sessions.
+_COMMON_FIXES: dict[str, str] = {
+    "teh": "the", "hte": "the", "th": "the", "thn": "then",
+    "taht": "that", "adn": "and", "nad": "and",
+    "fo": "for", "ot": "to", "ti": "it", "si": "is", "nto": "not",
+    "hwo": "how", "waht": "what", "whit": "with", "fro": "from",
+    "dont": "don't", "doesnt": "doesn't", "cant": "can't",
+    "wont": "won't", "isnt": "isn't", "im": "I'm", "ive": "I've",
+    "youre": "you're", "theyre": "they're", "theres": "there's",
+    "heres": "here's", "whats": "what's", "thats": "that's",
+    "itll": "it'll", "youll": "you'll",
+    "timout": "timeout", "conection": "connection", "brwoser": "browser",
+    "windwo": "window", "fokus": "focus", "clik": "click",
+    "sesion": "session", "positon": "position", "manege": "manage",
+    "setings": "settings", "downlod": "download", "mesage": "message",
+    "funtion": "function", "reponse": "response", "promts": "prompts",
+    "clipbord": "clipboard", "webscoket": "websocket", "trakker": "tracker",
+    "configration": "configuration", "perfomance": "performance",
+    "exract": "extract", "sendin": "sending", "complie": "compile",
+    "refator": "refactor", "modifiy": "modify", "encountrs": "encounters",
+    "pokballs": "pokeballs", "traid": "trade", "beter": "better",
+    "evry": "every", "befor": "before", "aftr": "after",
+    "ther": "there", "wher": "where", "wich": "which",
+    "becaus": "because", "alredy": "already", "somthing": "something",
+    "evrything": "everything", "diffrent": "different",
+    "conect": "connect", "maneger": "manager", "managr": "manager",
+    "recieve": "receive", "occured": "occurred", "seperate": "separate",
+    "definately": "definitely", "necesary": "necessary",
+    "wierd": "weird", "untill": "until", "accross": "across",
+    "basicly": "basically", "probly": "probably", "shoud": "should",
+    "actualy": "actually", "gona": "gonna", "wanna": "want to",
+    "lemme": "let me", "gimme": "give me", "kinda": "kind of",
+    "prolly": "probably", "tryna": "trying to", "dunno": "don't know",
+}
+
+
 def clean_request(text: str) -> str:
     """Clean up sloppy English in the user's request before it goes to Claude.
 
     Fixes common typos, swapped letters, missing punctuation, and
     run-on sentences. Doesn't change meaning — just makes it readable.
     """
-    import re
-
     if not text or len(text.strip()) < 3:
         return text
-
-    # Word-level typo fixes (same dict as search engine)
-    _COMMON_FIXES = {
-        "teh": "the", "hte": "the", "th": "the", "thn": "then",
-        "taht": "that", "adn": "and", "nad": "and",
-        "fo": "for", "ot": "to", "ti": "it", "si": "is", "nto": "not",
-        "hwo": "how", "waht": "what", "whit": "with", "fro": "from",
-        "dont": "don't", "doesnt": "doesn't", "cant": "can't",
-        "wont": "won't", "isnt": "isn't", "im": "I'm", "ive": "I've",
-        "youre": "you're", "theyre": "they're", "theres": "there's",
-        "heres": "here's", "whats": "what's", "thats": "that's",
-        "itll": "it'll", "youll": "you'll",
-        "timout": "timeout", "conection": "connection", "brwoser": "browser",
-        "windwo": "window", "fokus": "focus", "clik": "click",
-        "sesion": "session", "positon": "position", "manege": "manage",
-        "setings": "settings", "downlod": "download", "mesage": "message",
-        "funtion": "function", "reponse": "response", "promts": "prompts",
-        "clipbord": "clipboard", "webscoket": "websocket", "trakker": "tracker",
-        "configration": "configuration", "perfomance": "performance",
-        "exract": "extract", "sendin": "sending", "complie": "compile",
-        "refator": "refactor", "modifiy": "modify", "encountrs": "encounters",
-        "pokballs": "pokeballs", "traid": "trade", "beter": "better",
-        "evry": "every", "befor": "before", "aftr": "after",
-        "ther": "there", "wher": "where", "wich": "which",
-        "becaus": "because", "alredy": "already", "somthing": "something",
-        "evrything": "everything", "diffrent": "different",
-        "conect": "connect", "maneger": "manager", "managr": "manager",
-        "recieve": "receive", "occured": "occurred", "seperate": "separate",
-        "definately": "definitely", "necesary": "necessary",
-        "wierd": "weird", "untill": "until", "accross": "across",
-        "basicly": "basically", "probly": "probably", "shoud": "should",
-        "actualy": "actually", "gona": "gonna", "wanna": "want to",
-        "lemme": "let me", "gimme": "give me", "kinda": "kind of",
-        "prolly": "probably", "tryna": "trying to", "dunno": "don't know",
-    }
 
     # Split into words, fix each one
     words = text.split()

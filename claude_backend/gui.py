@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from dataclasses import asdict
@@ -25,6 +26,7 @@ from .config import ScanConfig, load_config
 from .generators.memory_files import compute_project_slug, get_memory_dirs
 from .ollama_manager import OllamaManager, RECOMMENDED_MODELS
 from .prompt_builder import build_smart_prompt, detect_intent, review_prompt, ROLES
+from .scanners.project import scan_project_fast_mtimes
 from .search import smart_search, get_domain, get_domain_color, get_all_domains
 from .tokenizer import count_tokens
 from .tracker import SessionMemory, TokenTracker
@@ -741,15 +743,13 @@ class TokenSaverApp(ctk.CTk):
         3. Deduplicates and ranks by total relevance
         4. Returns top results
         """
-        import re as _re
-
         # Split on sentence boundaries and conjunctions
-        chunks = _re.split(r'[.!?\n]+|(?:,\s*(?:and|also|plus|then|while)\s)', text)
+        chunks = re.split(r'[.!?\n]+|(?:,\s*(?:and|also|plus|then|while)\s)', text)
         chunks = [c.strip() for c in chunks if len(c.strip()) > 10]
 
         # Also try splitting on "and" / "also" for run-on sentences
         if len(chunks) <= 2 and len(text) > 200:
-            chunks = _re.split(r'\band\b|\balso\b|\bplus\b|\bthen\b', text)
+            chunks = re.split(r'\band\b|\balso\b|\bplus\b|\bthen\b', text)
             chunks = [c.strip() for c in chunks if len(c.strip()) > 10]
 
         # Cap at 8 sub-searches
@@ -1350,8 +1350,6 @@ class TokenSaverApp(ctk.CTk):
 
     def _auto_scan_tick(self) -> None:
         """Check for file changes, only do a full rescan if something changed."""
-        from .scanners.project import scan_project_fast_mtimes
-
         if self._project_path and not self._busy:
             def do():
                 new_mtimes = scan_project_fast_mtimes(self._project_path, self._config)

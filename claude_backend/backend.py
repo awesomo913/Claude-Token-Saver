@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import dataclass, field
+import shutil
 from pathlib import Path
 from typing import Optional
 
-from .config import ScanConfig, load_config
+from .config import ScanConfig
 from .manifest import Manifest
 from .types import GenerationResult, ProjectAnalysis
 
@@ -17,14 +18,15 @@ from .scanners.project import (
     find_key_files,
     get_language_stats,
     scan_project,
+    scan_project_fast_mtimes,
 )
 from .analyzers.code_extractor import extract_blocks
 from .analyzers.pattern_detector import detect_conventions
 from .analyzers.structure_mapper import map_modules
 
-from .generators.claude_md import generate_claude_md, write_claude_md
-from .generators.memory_files import write_memory_files
-from .generators.snippet_library import write_snippet_library
+from .generators.claude_md import MARKER_START, MARKER_END, generate_claude_md, write_claude_md
+from .generators.memory_files import generate_memory_files, get_memory_dirs, write_memory_files
+from .generators.snippet_library import generate_snippet_library, write_snippet_library
 
 logger = logging.getLogger(__name__)
 
@@ -118,11 +120,15 @@ class ClaudeContextManager:
                 logger.error("Failed to generate snippets: %s", e)
                 result.errors.append(f"snippets: {e}")
 
-        # Save manifest
+        # Save manifest with actual content hashes so delta prep works correctly
         manifest_path = project_path / ".claude" / "manifest.jsonl"
         manifest = Manifest(manifest_path)
         for f in result.files_written:
-            manifest.record(f, content="", generator="bootstrap")
+            try:
+                content = Path(f).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                content = ""
+            manifest.record(f, content=content, generator="bootstrap")
         manifest.save()
 
         logger.info("Bootstrap complete: %s", result.summary)
@@ -137,14 +143,12 @@ class ClaudeContextManager:
         manifest = Manifest(manifest_path)
 
         # Hash current source files to detect changes
-        from .scanners.project import scan_project_fast_mtimes
         current_mtimes = scan_project_fast_mtimes(project_path, self.config)
 
         # Compare against last prep's source snapshot
         last_snapshot_path = project_path / ".claude" / "source_snapshot.json"
         source_changed = True
         if last_snapshot_path.is_file():
-            import json
             try:
                 old = json.loads(last_snapshot_path.read_text(encoding="utf-8"))
                 source_changed = (old != current_mtimes)
@@ -176,7 +180,6 @@ class ClaudeContextManager:
 
         if self.config.generate_memory:
             try:
-                from .generators.memory_files import generate_memory_files, get_memory_dirs
                 files = generate_memory_files(analysis)
                 claude_dir, project_dir = get_memory_dirs(analysis.root)
                 for target_dir in [claude_dir, project_dir]:
@@ -194,7 +197,6 @@ class ClaudeContextManager:
 
         if self.config.generate_snippets:
             try:
-                from .generators.snippet_library import generate_snippet_library
                 snippets = generate_snippet_library(analysis, self.config.max_snippet_lines)
                 base = analysis.root / ".claude" / "snippets"
                 for rel_path, content in snippets.items():
@@ -213,7 +215,6 @@ class ClaudeContextManager:
         manifest.save()
 
         # Save source snapshot for next delta check
-        import json
         last_snapshot_path.parent.mkdir(parents=True, exist_ok=True)
         last_snapshot_path.write_text(
             json.dumps(current_mtimes, ensure_ascii=False),
@@ -257,7 +258,6 @@ class ClaudeContextManager:
         # Remove generated section from CLAUDE.md
         claude_md = project_path / "CLAUDE.md"
         if claude_md.is_file():
-            from .generators.claude_md import MARKER_START, MARKER_END
             content = claude_md.read_text(encoding="utf-8", errors="replace")
             start = content.find(MARKER_START)
             end = content.find(MARKER_END)
@@ -274,7 +274,6 @@ class ClaudeContextManager:
         for subdir in ["memory", "snippets"]:
             target = project_path / ".claude" / subdir
             if target.is_dir():
-                import shutil
                 shutil.rmtree(target)
                 removed.append(str(target))
 

@@ -22,6 +22,31 @@ logger = logging.getLogger(__name__)
 BINARY_CHECK_SIZE = 512
 
 
+def _build_dir_filter(config: ScanConfig):
+    """Build a predicate that returns True if a directory name should be skipped.
+
+    Pre-computes the ignore-sets from config so O(1) lookup per directory.
+    """
+    exact_ignore = set()
+    glob_suffixes: list[str] = []
+    for pat in config.ignore_dirs:
+        if pat.startswith("*"):
+            glob_suffixes.append(pat[1:])
+        else:
+            exact_ignore.add(pat)
+
+    def should_skip(name: str) -> bool:
+        if name in exact_ignore:
+            return True
+        if any(name.endswith(suf) for suf in glob_suffixes):
+            return True
+        if name.startswith(".") and name not in (".", ".claude"):
+            return True
+        return False
+
+    return should_skip
+
+
 def scan_project(root: Path, config: ScanConfig) -> list[FileEntry]:
     """Scan a project directory and return all matching files.
 
@@ -39,14 +64,7 @@ def scan_project(root: Path, config: ScanConfig) -> list[FileEntry]:
     max_bytes = config.max_file_size_kb * 1024
     max_files = config.max_files
 
-    # Pre-compute ignore sets for O(1) lookup
-    exact_ignore = set()
-    glob_suffixes: list[str] = []
-    for pat in config.ignore_dirs:
-        if pat.startswith("*"):
-            glob_suffixes.append(pat[1:])  # "*.egg-info" -> ".egg-info"
-        else:
-            exact_ignore.add(pat)
+    should_skip_dir = _build_dir_filter(config)
 
     root_str = str(root)
 
@@ -69,14 +87,8 @@ def scan_project(root: Path, config: ScanConfig) -> list[FileEntry]:
 
                 if item.is_dir(follow_symlinks=False):
                     # Prune ignored directories BEFORE descending
-                    if name in exact_ignore:
+                    if should_skip_dir(name):
                         continue
-                    if any(name.endswith(suf) for suf in glob_suffixes):
-                        continue
-                    if name.startswith(".") and name != ".":
-                        # Skip hidden dirs (but not current dir)
-                        if name not in (".claude",):  # allow .claude
-                            continue
                     subdirs.append(item.path)
                     continue
 
@@ -150,13 +162,7 @@ def scan_project_fast_mtimes(root: Path, config: ScanConfig) -> dict[str, float]
         return {}
 
     ext_set = set(config.extensions)
-    exact_ignore = set()
-    glob_suffixes: list[str] = []
-    for pat in config.ignore_dirs:
-        if pat.startswith("*"):
-            glob_suffixes.append(pat[1:])
-        else:
-            exact_ignore.add(pat)
+    should_skip_dir = _build_dir_filter(config)
 
     root_str = str(root)
     mtimes: dict[str, float] = {}
@@ -172,11 +178,7 @@ def scan_project_fast_mtimes(root: Path, config: ScanConfig) -> dict[str, float]
             for item in scanner:
                 name = item.name
                 if item.is_dir(follow_symlinks=False):
-                    if name in exact_ignore:
-                        continue
-                    if any(name.endswith(suf) for suf in glob_suffixes):
-                        continue
-                    if name.startswith(".") and name not in (".", ".claude"):
+                    if should_skip_dir(name):
                         continue
                     stack.append(item.path)
                     continue
