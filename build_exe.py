@@ -1,4 +1,4 @@
-"""Build script for Claude Token Saver standalone exe."""
+"""Build script for GitHub App Installer (standalone Windows exe)."""
 import shutil
 import subprocess
 import sys
@@ -6,9 +6,17 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# Optional: after build, copy dist/ClaudeTokenSaver into each folder (replaces existing).
-# Leave empty for CI / clones; add local Path(...) entries on your machine only.
-DEPLOY_TARGETS: list[Path] = []
+# PyInstaller --name; output folder: dist/<APP_NAME>/
+APP_NAME = "GitHubAppInstaller"
+
+
+def _default_deploy_targets() -> list[Path]:
+    """Copy the built app folder to Desktop (and any extra paths you add)."""
+    targets: list[Path] = [Path.home() / "Desktop" / APP_NAME]
+    return targets
+
+
+DEPLOY_TARGETS: list[Path] = _default_deploy_targets()
 
 # Auto-apply upstream patches before building (idempotent)
 _patcher = HERE / "patch_upstream.py"
@@ -20,7 +28,7 @@ cmd = [
     "--noconfirm",
     "--onedir",
     "--windowed",
-    "--name", "ClaudeTokenSaver",
+    "--name", APP_NAME,
     "--add-data", "claude_backend;claude_backend",
     "--hidden-import", "claude_backend",
     "--hidden-import", "claude_backend.gui",
@@ -48,15 +56,14 @@ cmd = [
     "--hidden-import", "claude_backend.tokenizer",
     "--hidden-import", "claude_backend.search",
     "--collect-submodules", "customtkinter",
-    "launch_token_saver.py",
+    "launch_github_app_installer.py",
 ]
 
-print("Building ClaudeTokenSaver.exe ...")
+print(f"Building {APP_NAME}.exe ...")
 print(" ".join(cmd[:6]) + " ...")
 subprocess.run(cmd, check=True)
 
-# Deploy the fresh build to every target folder (replacing any existing copy)
-_dist = HERE / "dist" / "ClaudeTokenSaver"
+_dist = HERE / "dist" / APP_NAME
 if _dist.exists():
     print("\nDeploying to target folders:")
     for target in DEPLOY_TARGETS:
@@ -69,4 +76,4 @@ if _dist.exists():
         except Exception as e:
             print(f"  [fail] {target}  ({e})")
 
-print("\nDone! Output in dist/ClaudeTokenSaver/")
+print(f"\nDone! Output in dist/{APP_NAME}/")

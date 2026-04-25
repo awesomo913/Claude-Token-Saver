@@ -1,4 +1,4 @@
-"""Claude Token Saver -- pre-stage project context for Claude Code sessions.
+"""GitHub App Installer -- pre-stage project context for Claude Code sessions.
 
 Scans a project, analyzes code patterns, and generates:
 - CLAUDE.md with project overview and conventions
@@ -14,6 +14,6 @@ Usage:
 """
 
 __version__ = "4.5.0"
-__app_name__ = "Claude Token Saver"
+__app_name__ = "GitHub App Installer"
 
 __all__ = ["backend", "config", "types"]

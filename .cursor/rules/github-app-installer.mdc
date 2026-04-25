@@ -1,0 +1,19 @@
+---
+description: GitHub App Installer — built exe location and launch
+globs: "**/*"
+alwaysApply: true
+---
+
+# GitHub App Installer (this repo)
+
+**Product name:** GitHub App Installer (not “Claude Token Saver” in user-facing text).
+
+**PyInstaller output:** `dist/GitHubAppInstaller/GitHubAppInstaller.exe`
+
+**After `py -3 build_exe.py`:** the same folder is also copied to **`Desktop/GitHubAppInstaller/`** (Windows, via `Path.home() / "Desktop"`).
+
+**When the user asks to open or run the exe:** use `scripts/open_github_app_installer.ps1` or `scripts/open_github_app_installer.cmd`, or start either path above. If missing, run `build_exe.py` from the repo root.
+
+**Dev (no build):** `py -3 -m claude_backend.gui`
+
+**Legacy names:** `ClaudeTokenSaver`, `launch_token_saver.py`, and `ClaudeTokenSaver.spec` were renamed to `GitHubAppInstaller` / `launch_github_app_installer.py` / `GitHubAppInstaller.spec`.

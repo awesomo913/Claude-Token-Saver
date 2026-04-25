@@ -1,6 +1,6 @@
-# Claude Token Saver
+# GitHub App Installer
 
-Save **88% of input tokens** when working with Claude Code by pre-staging targeted code context instead of letting Claude read entire files.
+Save **88% of input tokens** when working with Claude Code by pre-staging targeted code context instead of letting Claude read entire files. *(Repository name on GitHub may still appear as Claude-Token-Saver for history; the product is **GitHub App Installer**.)*
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -26,7 +26,7 @@ Every time you ask Claude about your code, it reads entire files to understand c
 
 ## The Solution
 
-Claude Token Saver scans your project once, then lets you build **targeted prompts** with only the relevant code. Type what you need in plain English (typos OK), and the tool auto-finds the right snippets.
+GitHub App Installer scans your project once, then lets you build **targeted prompts** with only the relevant code. Type what you need in plain English (typos OK), and the tool auto-finds the right snippets.
 
 ```
 WITHOUT tool:  71,808 tokens per message (reads full files)
@@ -37,8 +37,8 @@ SAVINGS:       88% reduction per message
 ## Quick Start
 
 ### Option A: Standalone EXE (no Python needed)
-1. Download `ClaudeTokenSaver_v4.5.zip` from Releases
-2. Unzip, double-click `ClaudeTokenSaver.exe`
+1. Download the release zip from Releases (artifact names may still include the legacy `ClaudeTokenSaver` prefix)
+2. Unzip, double-click `GitHubAppInstaller.exe` (or run `python build_exe.py` from source — a copy is also placed under `Desktop\GitHubAppInstaller` on Windows)
 
 ### Option B: Run from source
 ```bash

@@ -6,7 +6,7 @@ hiddenimports += collect_submodules('customtkinter')
 
 
 a = Analysis(
-    ['launch_token_saver.py'],
+    ['launch_github_app_installer.py'],
     pathex=[],
     binaries=[],
     datas=[('claude_backend', 'claude_backend')],
@@ -25,7 +25,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='ClaudeTokenSaver',
+    name='GitHubAppInstaller',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -44,5 +44,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='ClaudeTokenSaver',
+    name='GitHubAppInstaller',
 )
