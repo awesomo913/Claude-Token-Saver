@@ -584,6 +584,17 @@ class TokenSaverApp(ctk.CTk):
         # Hidden entry for backward compat (search functions read _task_input)
         self._task_input = self._request_box
 
+        # ═══ BOTTOM: Big copy button (pack FIRST with side=bottom so it always shows) ═══
+        bar = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8, border_width=2, border_color=C["accent"])
+        bar.pack(side="bottom", fill="x", padx=20, pady=(0, 12))
+        bi = ctk.CTkFrame(bar, fg_color="transparent"); bi.pack(fill="x", padx=12, pady=10)
+        ctk.CTkButton(bi, text="Copy Complete Prompt to Clipboard",
+                      font=(F, 15, "bold"), fg_color=C["accent"],
+                      hover_color=C["accent2"], height=48, width=360,
+                      command=self._copy_context).pack(side="left", padx=(0, 12))
+        ctk.CTkButton(bi, text="Snippets Only", font=(F, 11), fg_color=C["bg2"],
+                      height=34, width=120, command=self._copy_raw).pack(side="left")
+
         # ═══ MAIN SPLIT: queue | preview ═══
         split = ctk.CTkFrame(fr, fg_color="transparent")
         split.pack(fill="both", expand=True, padx=20, pady=(0, 6))
@@ -629,17 +640,6 @@ class TokenSaverApp(ctk.CTk):
         self._preview = ctk.CTkTextbox(right, font=(M, 11), fg_color=C["card"], border_color=C["border"],
                                        border_width=1, text_color="#d4d4d4", state="disabled", wrap="word")
         self._preview.pack(fill="both", expand=True, pady=(0, 6))
-
-        # ═══ BOTTOM: Big copy button ═══
-        bar = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8, border_width=2, border_color=C["accent"])
-        bar.pack(fill="x", padx=20, pady=(0, 12))
-        bi = ctk.CTkFrame(bar, fg_color="transparent"); bi.pack(fill="x", padx=12, pady=10)
-        ctk.CTkButton(bi, text="Copy Complete Prompt to Clipboard",
-                      font=(F, 15, "bold"), fg_color=C["accent"],
-                      hover_color=C["accent2"], height=48, width=360,
-                      command=self._copy_context).pack(side="left", padx=(0, 12))
-        ctk.CTkButton(bi, text="Snippets Only", font=(F, 11), fg_color=C["bg2"],
-                      height=34, width=120, command=self._copy_raw).pack(side="left")
 
     # ── Auto-find: types request -> code appears automatically ─────────
 

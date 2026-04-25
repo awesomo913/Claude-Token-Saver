@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Bridge (Native Messaging)",
+  "version": "0.1.0",
+  "description": "Captures completed Claude messages via DOM and sends them to a local app over Chrome Native Messaging. No CDP, no --remote-debugging-port.",
+  "permissions": ["nativeMessaging", "storage", "scripting", "activeTab", "alarms"],
+  "host_permissions": ["https://claude.ai/*", "https://*.claude.ai/*"],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*", "https://*.claude.ai/*"],
+      "js": ["content_claude.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Claude Native Bridge: click to test native host (see console on failure)"
+  }
+}

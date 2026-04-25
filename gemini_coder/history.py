@@ -36,11 +36,28 @@ class HistoryEntry:
         self.timestamp = timestamp or datetime.now().isoformat()
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        # HistoryEntry is a plain class, not a @dataclass, so asdict() fails.
+        # Serialize the fields the __init__ accepts.
+        return {
+            "entry_type": self.entry_type,
+            "title": self.title,
+            "prompt": self.prompt,
+            "response": self.response,
+            "model": self.model,
+            "elapsed_seconds": self.elapsed_seconds,
+            "status": self.status,
+            "timestamp": self.timestamp,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "HistoryEntry":
-        return cls(**data)
+        # Drop unknown keys from older schemas (e.g. legacy 'id' field) so
+        # loading doesn't crash with TypeError.
+        known = {
+            "entry_type", "title", "prompt", "response", "model",
+            "elapsed_seconds", "status", "timestamp",
+        }
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 
 class HistoryManager:

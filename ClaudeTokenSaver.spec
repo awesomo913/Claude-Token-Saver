@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = ['claude_backend', 'claude_backend.gui', 'claude_backend.backend', 'claude_backend.config', 'claude_backend.types', 'claude_backend.storage', 'claude_backend.manifest', 'claude_backend.search', 'claude_backend.prompt_builder', 'claude_backend.tracker', 'claude_backend.ollama_manager', 'claude_backend.scanners', 'claude_backend.scanners.project', 'claude_backend.scanners.local', 'claude_backend.scanners.github', 'claude_backend.analyzers', 'claude_backend.analyzers.code_extractor', 'claude_backend.analyzers.pattern_detector', 'claude_backend.analyzers.structure_mapper', 'claude_backend.generators', 'claude_backend.generators.claude_md', 'claude_backend.generators.memory_files', 'claude_backend.generators.snippet_library']
+hiddenimports = ['claude_backend', 'claude_backend.gui', 'claude_backend.backend', 'claude_backend.config', 'claude_backend.types', 'claude_backend.storage', 'claude_backend.manifest', 'claude_backend.search', 'claude_backend.prompt_builder', 'claude_backend.tracker', 'claude_backend.ollama_manager', 'claude_backend.scanners', 'claude_backend.scanners.project', 'claude_backend.scanners.local', 'claude_backend.scanners.github', 'claude_backend.analyzers', 'claude_backend.analyzers.code_extractor', 'claude_backend.analyzers.pattern_detector', 'claude_backend.analyzers.structure_mapper', 'claude_backend.generators', 'claude_backend.generators.claude_md', 'claude_backend.generators.memory_files', 'claude_backend.generators.snippet_library', 'claude_backend.tokenizer', 'claude_backend.search']
 hiddenimports += collect_submodules('customtkinter')
 
 
 a = Analysis(
-    ['claude_backend\\gui.py'],
+    ['launch_token_saver.py'],
     pathex=[],
     binaries=[],
     datas=[('claude_backend', 'claude_backend')],
