@@ -2,7 +2,7 @@
 
 When Claude Code starts a session, this hook runs `prep` on the current
 project, ensuring CLAUDE.md and memory files are always fresh. The user
-never has to open the GitHub App Installer GUI — context updates automatically.
+never has to open the Token Saver GUI — context updates automatically.
 
 Safe: reads settings.json, validates JSON, only writes if parseable.
 """
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 HOOK_ID = "claude_token_saver_auto_prep"
-HOOK_DESCRIPTION = "GitHub App Installer — auto-refresh context on session start"
+HOOK_DESCRIPTION = "Claude Token Saver — auto-refresh context on session start"
 
 
 def _build_hook_command() -> str:

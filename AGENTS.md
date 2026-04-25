@@ -1,6 +1,6 @@
-# Agent notes — GitHub App Installer
+# Agent notes — Claude Token Saver (this repository)
 
-- **Name:** The application is **GitHub App Installer**. Do not refer to it as “Claude Token Saver” in user-facing strings (historical GitHub repo name may still be Claude-Token-Saver).
-- **Windows exe:** `dist/GitHubAppInstaller/GitHubAppInstaller.exe`. After `build_exe.py`, a full copy is deployed to `Desktop/GitHubAppInstaller/`.
-- **Launch script:** `scripts/open_github_app_installer.ps1` (tries `dist\` first, then Desktop copy).
-- **PyInstaller entry:** `launch_github_app_installer.py`. Spec: `GitHubAppInstaller.spec`.
+- **This project is [Claude Token Saver](https://github.com/awesomo913/Claude-Token-Saver)** — context / token-saver GUI for Claude Code. It is **not** the separate **GitHub App Installer** project; do not conflate the two.
+- **Windows exe:** `dist/ClaudeTokenSaver/ClaudeTokenSaver.exe`. After `build_exe.py`, a copy is deployed to `Desktop/ClaudeTokenSaver/`.
+- **Launch script:** `scripts/open_token_saver_exe.ps1` (dist path, then Desktop copy).
+- **PyInstaller entry:** `launch_token_saver.py`. Spec: `ClaudeTokenSaver.spec`.

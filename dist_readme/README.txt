@@ -1,10 +1,10 @@
-GITHUB APP INSTALLER v4.5
-===========================
+CLAUDE TOKEN SAVER v4.5
+=======================
 Save tokens and money when working with Claude Code.
 
 QUICK START
 -----------
-1. Double-click "GitHubAppInstaller.exe" to launch
+1. Double-click "ClaudeTokenSaver.exe" to launch
 2. Click Browse, pick your code project folder, click Load
 3. Click "Bootstrap" (one-time setup, generates context files)
 4. Go to "Context Builder" tab
@@ -44,7 +44,7 @@ REQUIREMENTS
 OLLAMA SETUP (optional, makes search smarter)
 ----------------------------------------------
 1. Download and install Ollama from https://ollama.com
-2. Open GitHub App Installer, go to Settings
+2. Open the Token Saver, go to Settings
 3. Click one of the model download buttons (qwen2.5:0.5b is smallest)
 4. Wait for download, then the tool auto-selects it
 

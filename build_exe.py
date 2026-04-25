@@ -1,4 +1,4 @@
-"""Build script for GitHub App Installer (standalone Windows exe)."""
+"""Build script for Claude Token Saver (standalone Windows exe)."""
 import shutil
 import subprocess
 import sys
@@ -6,14 +6,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# PyInstaller --name; output folder: dist/<APP_NAME>/
-APP_NAME = "GitHubAppInstaller"
+# PyInstaller --name; output: dist/<APP_NAME>/
+APP_NAME = "ClaudeTokenSaver"
 
 
 def _default_deploy_targets() -> list[Path]:
-    """Copy the built app folder to Desktop (and any extra paths you add)."""
-    targets: list[Path] = [Path.home() / "Desktop" / APP_NAME]
-    return targets
+    """Copy the built app to Desktop (Windows). Separate project: not GitHub App Installer."""
+    return [Path.home() / "Desktop" / APP_NAME]
 
 
 DEPLOY_TARGETS: list[Path] = _default_deploy_targets()
@@ -56,7 +55,7 @@ cmd = [
     "--hidden-import", "claude_backend.tokenizer",
     "--hidden-import", "claude_backend.search",
     "--collect-submodules", "customtkinter",
-    "launch_github_app_installer.py",
+    "launch_token_saver.py",
 ]
 
 print(f"Building {APP_NAME}.exe ...")

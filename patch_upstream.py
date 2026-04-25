@@ -92,10 +92,10 @@ def patch_copy_button_layout() -> bool:
 #   SYMPTOM: "ImportError: attempted relative import with no known parent
 #            package" when running the exe. PyInstaller runs gui.py as a
 #            script, so `from .backend import ...` fails.
-#   FIX:     Create launch_github_app_installer.py wrapper that adds sys.path first.
+#   FIX:     Create launch_token_saver.py wrapper that adds sys.path first.
 # ─────────────────────────────────────────────────────────────────────
 def patch_launcher_wrapper() -> bool:
-    f = ROOT / "launch_github_app_installer.py"
+    f = ROOT / "launch_token_saver.py"
     if f.exists():
         return False
     _write(f, '''"""Entry point for PyInstaller — bootstraps claude_backend as a package."""
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 #   SYMPTOM: Build succeeds but exe fails with ImportError for tokenizer,
 #            search, or other submodules; or gui.py as entry point breaks
 #            relative imports.
-#   FIX:     Use launch_github_app_installer.py as entry, add missing hidden imports.
+#   FIX:     Use launch_token_saver.py as entry, add missing hidden imports.
 # ─────────────────────────────────────────────────────────────────────
 def patch_build_script() -> bool:
     f = ROOT / "build_exe.py"
@@ -139,7 +139,7 @@ def patch_build_script() -> bool:
     if '"claude_backend/gui.py",' in src:
         src = src.replace(
             '"claude_backend/gui.py",',
-            '"launch_github_app_installer.py",',
+            '"launch_token_saver.py",',
         )
         changed = True
 

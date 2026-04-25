@@ -1,0 +1,17 @@
+---
+description: Claude Token Saver — built exe and launch (this repo)
+globs: "**/*"
+alwaysApply: true
+---
+
+# Claude Token Saver (`claude_interaction_tool`)
+
+This repository is **Claude Token Saver** (GitHub: Claude-Token-Saver). It is a **different product** from any separate **GitHub App Installer** work — do not merge naming or assume they are the same app.
+
+**PyInstaller output:** `dist/ClaudeTokenSaver/ClaudeTokenSaver.exe`
+
+**After `py -3 build_exe.py`:** a full copy of the build folder is also written to **`Desktop/ClaudeTokenSaver/`** (Windows).
+
+**To open the exe:** `scripts/open_token_saver_exe.ps1` or `.cmd`, or run either path above. If missing, `py -3 build_exe.py` from repo root.
+
+**Dev (no build):** `py -3 -m claude_backend.gui`
