@@ -279,6 +279,17 @@ Comprehensive testing was performed on 3 representative projects (small, medium,
   - [TOKEN_SAVER_DETAILED_ANALYTICS.json](docs/analytics/TOKEN_SAVER_DETAILED_ANALYTICS.json) — 200+ metrics per project
   - [MACHINE_LEARNING_DATASET.json](docs/analytics/MACHINE_LEARNING_DATASET.json) — Normalized feature vectors for ML analysis
 
+### Privacy & Redaction
+✅ **All analytics data is privacy-safe for public sharing:**
+- No project names — Redacted with MD5 hashing
+- No file paths — Replaced with generic labels
+- No code content — Only metrics and statistics
+- No personal data — All PII removed before publication
+
+📖 **Learn more**:
+- [ANALYTICS_PRIVACY.md](docs/ANALYTICS_PRIVACY.md) — Redaction methodology and verification
+- [ANALYTICS_TEMPLATES.md](docs/ANALYTICS_TEMPLATES.md) — Code templates for generating and verifying your own analytics
+
 ### Dimension Scores
 | Dimension | Score | Status |
 |-----------|-------|--------|
@@ -304,6 +315,24 @@ python tests/run_comprehensive_analysis.py
 # - TESTING_REPORTS.md (detailed report)
 # - PRODUCTION_READINESS.md (status + blockers)
 # - docs/analytics/*.json (raw metrics + ML data)
+
+# Verify privacy before publishing
+python verify_privacy.py
+```
+
+### Using Analytics for ML Training
+```bash
+# Analytics are ML-ready (normalized feature vectors)
+# Templates available at: docs/ANALYTICS_TEMPLATES.md
+
+# Example: Load and use
+python -c "
+import json
+with open('docs/analytics/MACHINE_LEARNING_DATASET.json') as f:
+    data = json.load(f)
+    print(f'Projects: {len(data[\"projects\"])}')
+    print(f'Features ready for training: {len(data[\"projects\"][0][\"metrics\"])}')
+"
 ```
 
 ## License

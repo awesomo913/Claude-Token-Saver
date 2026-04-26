@@ -243,6 +243,20 @@ grep "CRITICAL" MACHINE_LEARNING_DATASET.json
 - **Detailed Metrics**: See `docs/analytics/TOKEN_SAVER_DETAILED_ANALYTICS.json`
 - **ML Dataset**: See `docs/analytics/MACHINE_LEARNING_DATASET.json`
 - **Full Test Report**: See `TESTING_REPORTS.md`
+- **Privacy & Redaction**: See `docs/ANALYTICS_PRIVACY.md`
+
+---
+
+## Privacy & Data Protection
+
+**This report contains NO personal information:**
+- ✅ Project names are redacted (MD5 hashed to `PROJ_*`)
+- ✅ File paths are anonymized
+- ✅ No user data, credentials, or sensitive content
+- ✅ Only metrics and statistics included
+- ✅ Safe to share publicly
+
+For full details on redaction methodology and how we protect your data, see [ANALYTICS_PRIVACY.md](docs/ANALYTICS_PRIVACY.md).
 
 ---
 
