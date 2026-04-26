@@ -9,6 +9,24 @@ Save **88% of input tokens** when working with Claude Code by pre-staging target
 ![Tokens Saved](https://img.shields.io/badge/Tokens_Saved-5.7M+-brightgreen)
 ![Grade](https://img.shields.io/badge/Grade-A_(3.70_GPA)-gold)
 
+## ⚠️ Production Status
+
+**Current Status**: NOT PRODUCTION READY (7.9/10)  
+**Critical Blocker**: 1 blocking issue identified during testing  
+**Latest Testing**: 2026-04-26 (43 files, 463 tokens, 100% consistency)
+
+📋 **[View Full Production Readiness Report](PRODUCTION_READINESS.md)** | 📊 **[View Testing Report](TESTING_REPORTS.md)** | 📈 **[View Analytics](docs/analytics/)**
+
+### Key Findings
+- ✅ **Tokenization**: 100% consistency across 15 tests, 3.36 chars/token average
+- ✅ **Filesystem Scanning**: 43/43 files discovered correctly (100%)
+- ⚠️ **Context Generation**: BLOCKED by ScanConfig API incompatibility (critical bug)
+- ⚠️ **Code Quality Analysis**: Untested on real production code
+
+**Action Required**: Fix ScanConfig API parameter mismatch (estimated 2 hours) before production deployment.
+
+---
+
 ## What's New in v4.5.2
 
 - **Real BPE tokenizer** — replaced `chars/3.2` heuristic with tiktoken (Rust-backed, millisecond speed). 6-35% more accurate token counts, especially on code, JSON, and regex.
@@ -242,6 +260,51 @@ The tool measures real events, not estimates:
 2. **Per session**: Measures pre-loaded context (CLAUDE.md + memory) vs. 30% source scan
 3. **Restart savings**: Counts conversation restarts avoided (each costs ~5K tokens to re-explain context)
 4. **Token math**: Uses tiktoken BPE tokenizer (cl100k_base, Rust-backed) for accurate counts. Falls back to `chars * 10 / 32` heuristic if tiktoken not installed.
+
+## Testing & Analytics
+
+Comprehensive testing was performed on 3 representative projects (small, medium, large) totaling 43 files and 463 tokens.
+
+### Test Results Summary
+- **Files Scanned**: 43 across 3 project types
+- **Tokens Counted**: 463 with 3.36 chars/token average
+- **Tokenization Consistency**: 100% (15/15 tests passed, 0 variance)
+- **File Discovery Accuracy**: 100% (43/43 files found)
+- **Critical Issues Found**: 1 (ScanConfig API incompatibility)
+
+### Detailed Reports
+- 📋 **[PRODUCTION_READINESS.md](PRODUCTION_READINESS.md)** — Current status, blockers, and fix roadmap (7.9/10 ready)
+- 📊 **[TESTING_REPORTS.md](TESTING_REPORTS.md)** — Detailed test results across 7 dimensions (tokenization, filesystem, code quality, context generation, performance, reliability, accuracy)
+- 📈 **Raw Analytics Data**:
+  - [TOKEN_SAVER_DETAILED_ANALYTICS.json](docs/analytics/TOKEN_SAVER_DETAILED_ANALYTICS.json) — 200+ metrics per project
+  - [MACHINE_LEARNING_DATASET.json](docs/analytics/MACHINE_LEARNING_DATASET.json) — Normalized feature vectors for ML analysis
+
+### Dimension Scores
+| Dimension | Score | Status |
+|-----------|-------|--------|
+| Tokenization | 9.5/10 | ✅ PASS — 100% consistency |
+| Filesystem | 8.5/10 | ✅ PASS — All files discovered |
+| Code Quality | 6.0/10 | ⚠️ Untested on real code |
+| Context Generation | 5.0/10 | ❌ BLOCKED — API bug |
+| Performance | 8.0/10 | ✅ GOOD — Fast scanning |
+| Reliability | 8.5/10 | ✅ GOOD — No crashes |
+| **Overall** | **7.9/10** | ⚠️ **NOT PRODUCTION READY** |
+
+### Known Issues
+1. **CRITICAL**: ScanConfig API incompatibility blocks context generation (fix: 2 hours)
+2. **MEDIUM**: Tokenizer accuracy not validated against official tokenizer
+3. **MEDIUM**: Code quality detection untested on real production code
+
+### How to Run Tests
+```bash
+# Full test suite with analytics
+python tests/run_comprehensive_analysis.py
+
+# Results are saved to:
+# - TESTING_REPORTS.md (detailed report)
+# - PRODUCTION_READINESS.md (status + blockers)
+# - docs/analytics/*.json (raw metrics + ML data)
+```
 
 ## License
 

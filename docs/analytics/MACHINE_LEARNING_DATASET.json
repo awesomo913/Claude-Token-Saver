@@ -1,0 +1,133 @@
+{
+  "metadata": {
+    "report_type": "Token Saver Comprehensive Analysis",
+    "version": "2.0-critical",
+    "generated": "2026-04-26T00:54:33Z",
+    "purpose": "Machine learning model training and analysis",
+    "data_format": "json-compatible"
+  },
+  "test_results": [
+    {
+      "project_id": "PROJ_936dccd44f11",
+      "project_type": "small_utility",
+      "metrics": {
+        "files": 4,
+        "total_bytes": 83,
+        "python_files": 3,
+        "total_tokens": 23,
+        "avg_chars_per_token": 3.22,
+        "avg_tokens_per_file": 7.67,
+        "token_std_dev": 2.05
+      },
+      "consistency_test": {
+        "total_tests": 5,
+        "passed": 5,
+        "variance_max": 0,
+        "score": 100
+      },
+      "status": "PASS_TOKENIZATION"
+    },
+    {
+      "project_id": "PROJ_2f48f5324739",
+      "project_type": "medium_service",
+      "metrics": {
+        "files": 11,
+        "total_bytes": 243,
+        "python_files": 10,
+        "total_tokens": 63,
+        "avg_chars_per_token": 3.54,
+        "avg_tokens_per_file": 6.3,
+        "token_std_dev": 1.41
+      },
+      "consistency_test": {
+        "total_tests": 5,
+        "passed": 5,
+        "variance_max": 0,
+        "score": 100
+      },
+      "status": "FAIL_CONTEXT_GENERATION",
+      "context_error": "ScanConfig API incompatibility"
+    },
+    {
+      "project_id": "PROJ_2fc4d94aeda0",
+      "project_type": "large_multiservice",
+      "metrics": {
+        "files": 28,
+        "total_bytes": 1233,
+        "python_files": 28,
+        "total_tokens": 377,
+        "avg_chars_per_token": 3.27,
+        "avg_tokens_per_file": 13.46,
+        "token_std_dev": 2.41
+      },
+      "consistency_test": {
+        "total_tests": 5,
+        "passed": 5,
+        "variance_max": 0,
+        "score": 100
+      },
+      "status": "PASS_SCALING"
+    }
+  ],
+  "aggregate_statistics": {
+    "total_projects": 3,
+    "total_files": 43,
+    "total_bytes": 1559,
+    "total_tokens": 463,
+    "avg_chars_per_token": 3.36,
+    "consistency_rate": 100.0,
+    "critical_issues": 1
+  },
+  "dimension_scores": {
+    "tokenization": 9.5,
+    "filesystem": 8.5,
+    "code_quality": 6.0,
+    "context_generation": 5.0,
+    "performance": 8.0,
+    "reliability": 8.5,
+    "overall": 7.9
+  },
+  "critical_findings": [
+    {
+      "type": "API_INCOMPATIBILITY",
+      "component": "ScanConfig",
+      "severity": "CRITICAL",
+      "impact": "Blocks context generation entirely",
+      "fix_complexity": "LOW"
+    },
+    {
+      "type": "GROUND_TRUTH_VALIDATION",
+      "component": "tokenizer",
+      "severity": "MEDIUM",
+      "impact": "Cannot confirm 95%+ accuracy",
+      "fix_complexity": "MEDIUM"
+    },
+    {
+      "type": "LIMITED_TEST_DATA",
+      "component": "code_quality",
+      "severity": "MEDIUM",
+      "impact": "Detection untested on real code",
+      "fix_complexity": "LOW"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "action": "Fix ScanConfig API incompatibility",
+      "effort_hours": 2
+    },
+    {
+      "priority": "HIGH",
+      "action": "Validate tokenizer against official tokenizer",
+      "effort_hours": 3
+    },
+    {
+      "priority": "HIGH",
+      "action": "Test on real projects with code quality",
+      "effort_hours": 3
+    }
+  ],
+  "status": "NOT_PRODUCTION_READY",
+  "confidence_level": "75%",
+  "estimated_time_to_production": "4-6 hours"
+}

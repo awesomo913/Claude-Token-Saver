@@ -1,0 +1,341 @@
+{
+  "metadata": {
+    "timestamp": "2026-04-26T00:54:33.820936",
+    "version": "2.0",
+    "purpose": "Deep critical analysis of Token Saver performance"
+  },
+  "projects": [
+    {
+      "redacted_id": "PROJ_936dccd44f11",
+      "original_label": "Small Utility Project",
+      "timestamp": "2026-04-26T00:54:33.822206",
+      "dimensions": {
+        "filesystem": {
+          "total_files": 4,
+          "file_statistics": {},
+          "size_distribution": {},
+          "directory_depth": 2,
+          "file_types_detailed": {
+            ".md": {
+              "count": 1,
+              "total_size": 9,
+              "avg_size": 9.0,
+              "min_size": 9,
+              "max_size": 9
+            },
+            ".py": {
+              "count": 3,
+              "total_size": 74,
+              "avg_size": 24.666666666666668,
+              "min_size": 16,
+              "max_size": 32
+            }
+          },
+          "issues_found": []
+        },
+        "tokenization": {
+          "total_tokens": 23,
+          "total_characters": 74,
+          "file_tokenization_data": [
+            {
+              "file": "src\\core.py",
+              "tokens": 10,
+              "characters": 32,
+              "ratio": 3.2,
+              "lines": 1
+            },
+            {
+              "file": "src\\utils.py",
+              "tokens": 8,
+              "characters": 26,
+              "ratio": 3.25,
+              "lines": 1
+            },
+            {
+              "file": "tests\\test.py",
+              "tokens": 5,
+              "characters": 16,
+              "ratio": 3.2,
+              "lines": 1
+            }
+          ],
+          "token_statistics": {
+            "mean_tokens_per_file": 7.666666666666667,
+            "median_tokens_per_file": 8,
+            "std_dev": 2.0548046676563256
+          },
+          "consistency_tests": [
+            {
+              "input": "hello",
+              "results": [1, 1, 1, 1, 1],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "hello world",
+              "results": [3, 3, 3, 3, 3],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "def function(): pass",
+              "results": [6, 6, 6, 6, 6],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "{\"key\": \"value\"}",
+              "results": [5, 5, 5, 5, 5],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "<!-- html comment -->",
+              "results": [6, 6, 6, 6, 6],
+              "consistent": true,
+              "variance": 0
+            }
+          ],
+          "edge_cases": [],
+          "token_efficiency": {}
+        },
+        "code_quality": {
+          "python_files_analyzed": 3,
+          "type_hints_analysis": {
+            "files_with_hints": 0,
+            "files_with_return_hints": 0,
+            "total_annotations": 0,
+            "coverage_percent": 0.0
+          },
+          "documentation_coverage": {
+            "files_with_docs": 0,
+            "files_with_function_docs": 0,
+            "coverage_percent": 0.0
+          },
+          "error_handling_analysis": {
+            "files_with_error_handling": 0,
+            "total_try_blocks": 0,
+            "coverage_percent": 0.0
+          },
+          "complexity_indicators": {},
+          "code_smells": []
+        },
+        "context_generation": {
+          "scan_success": false,
+          "scan_duration": 0,
+          "files_discovered": 0,
+          "modules_identified": 0,
+          "code_blocks_extracted": 0,
+          "entry_points_found": 0,
+          "extraction_efficiency": {},
+          "error": "ScanConfig.__init__() got an unexpected keyword argument 'root'"
+        },
+        "accuracy": {
+          "tokenizer_consistency": "PASS",
+          "consistency_score": 100,
+          "edge_case_handling": {
+            "empty": "PASS",
+            "whitespace": "PASS",
+            "unicode": "PASS",
+            "large_code": "PASS"
+          },
+          "error_resilience": {},
+          "data_integrity": {}
+        },
+        "performance": {
+          "filesystem_scan_speed": 0,
+          "tokenization_throughput": 0,
+          "memory_efficiency": {},
+          "bottlenecks": []
+        }
+      },
+      "critical_assessment": {
+        "strengths": ["Tokenizer is fully consistent across runs"],
+        "weaknesses": ["Context generation failed"],
+        "edge_cases": [],
+        "recommendations": [],
+        "risk_score": 0
+      }
+    },
+    {
+      "redacted_id": "PROJ_2f48f5324739",
+      "original_label": "Medium Web Service",
+      "timestamp": "2026-04-26T00:54:33.827642",
+      "dimensions": {
+        "filesystem": {
+          "total_files": 11,
+          "file_types_detailed": {
+            ".json": {
+              "count": 1,
+              "total_size": 20,
+              "avg_size": 20.0
+            },
+            ".py": {
+              "count": 10,
+              "total_size": 223,
+              "avg_size": 22.3
+            }
+          },
+          "issues_found": []
+        },
+        "tokenization": {
+          "total_tokens": 63,
+          "total_characters": 223,
+          "token_statistics": {
+            "mean_tokens_per_file": 6.3,
+            "median_tokens_per_file": 6,
+            "std_dev": 2.0024984394500787
+          },
+          "consistency_tests": [
+            {
+              "input": "hello",
+              "results": [1, 1, 1, 1, 1],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "hello world",
+              "results": [3, 3, 3, 3, 3],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "def function(): pass",
+              "results": [6, 6, 6, 6, 6],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "{\"key\": \"value\"}",
+              "results": [5, 5, 5, 5, 5],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "<!-- html comment -->",
+              "results": [6, 6, 6, 6, 6],
+              "consistent": true,
+              "variance": 0
+            }
+          ]
+        },
+        "context_generation": {
+          "scan_success": false,
+          "error": "ScanConfig.__init__() got an unexpected keyword argument 'root'"
+        },
+        "accuracy": {
+          "tokenizer_consistency": "PASS",
+          "consistency_score": 100
+        }
+      },
+      "critical_assessment": {
+        "strengths": ["Tokenizer is fully consistent across runs"],
+        "weaknesses": ["Context generation failed"],
+        "risk_score": 0
+      }
+    },
+    {
+      "redacted_id": "PROJ_2fc4d94aeda0",
+      "original_label": "Large Multi-Service",
+      "timestamp": "2026-04-26T00:54:33.834708",
+      "dimensions": {
+        "filesystem": {
+          "total_files": 28,
+          "file_types_detailed": {
+            ".py": {
+              "count": 28,
+              "total_size": 1233,
+              "avg_size": 44.035714285714285
+            }
+          },
+          "issues_found": []
+        },
+        "tokenization": {
+          "total_tokens": 377,
+          "total_characters": 1233,
+          "token_statistics": {
+            "mean_tokens_per_file": 13.464285714285714,
+            "median_tokens_per_file": 19,
+            "std_dev": 6.521843203842776
+          },
+          "consistency_tests": [
+            {
+              "input": "hello",
+              "results": [1, 1, 1, 1, 1],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "hello world",
+              "results": [3, 3, 3, 3, 3],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "def function(): pass",
+              "results": [6, 6, 6, 6, 6],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "{\"key\": \"value\"}",
+              "results": [5, 5, 5, 5, 5],
+              "consistent": true,
+              "variance": 0
+            },
+            {
+              "input": "<!-- html comment -->",
+              "results": [6, 6, 6, 6, 6],
+              "consistent": true,
+              "variance": 0
+            }
+          ]
+        },
+        "context_generation": {
+          "scan_success": false,
+          "error": "ScanConfig.__init__() got an unexpected keyword argument 'root'"
+        },
+        "accuracy": {
+          "tokenizer_consistency": "PASS",
+          "consistency_score": 100
+        }
+      },
+      "critical_assessment": {
+        "strengths": ["Tokenizer is fully consistent across runs"],
+        "weaknesses": ["Context generation failed"],
+        "risk_score": 0
+      }
+    }
+  ],
+  "aggregate_stats": {
+    "projects_analyzed": 3,
+    "total_files_processed": 43,
+    "total_tokens_counted": 463,
+    "timestamp": "2026-04-26T00:54:33.848192"
+  },
+  "critical_findings": [
+    {
+      "type": "API_INCOMPATIBILITY",
+      "component": "ScanConfig",
+      "severity": "CRITICAL",
+      "impact": "Blocks context generation entirely",
+      "fix_complexity": "LOW"
+    },
+    {
+      "type": "GROUND_TRUTH_VALIDATION",
+      "component": "tokenizer",
+      "severity": "MEDIUM",
+      "impact": "Cannot confirm 95%+ accuracy",
+      "fix_complexity": "MEDIUM"
+    },
+    {
+      "type": "LIMITED_TEST_DATA",
+      "component": "code_quality",
+      "severity": "MEDIUM",
+      "impact": "Detection untested on real code",
+      "fix_complexity": "LOW"
+    }
+  ],
+  "performance_metrics": {},
+  "data_quality_report": {}
+}
