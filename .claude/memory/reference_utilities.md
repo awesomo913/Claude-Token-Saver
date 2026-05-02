@@ -8,8 +8,6 @@ type: reference
 
 | Function | Module | Purpose |
 |----------|--------|---------|
-| `main` | `__main__.py` | -- |
-| `main` | `ai/__main__.py` | -- |
 | `logger` | `ai_profiles.py` | -- |
 | `AIProfile` | `ai_profiles.py` | Describes how to automate a specific AI web chat. |
 | `GEMINI_PROFILE` | `ai_profiles.py` | -- |
@@ -22,6 +20,7 @@ type: reference
 | `OPENROUTER_FREE_MODELS` | `ai_profiles.py` | -- |
 | `logger` | `auto_save.py` | -- |
 | `save_task_output` | `auto_save.py` | Save task output to ~/Downloads as a .txt file. |
+| `save_smart_route_output` | `auto_save.py` | Save combined Smart Route results (free + claude) as one file. |
 | `logger` | `broadcast.py` | -- |
 | `engineer_prompt` | `broadcast.py` | Use Prompt Architect's engine to build a production-grade prompt. |
 | `engineer_improvement_prompt` | `broadcast.py` | Generate an improvement prompt for subsequent iterations. |
@@ -37,6 +36,9 @@ type: reference
 | `type_prompt` | `browser_actions.py` | Type text into the focused input via clipboard paste. |
 | `send_message` | `browser_actions.py` | Send the message using the profile's send method. |
 | `wait_for_generation_done` | `browser_actions.py` | Wait for the AI to finish generating. |
+| `HERE` | `build_exe.py` | -- |
+| `APP_NAME` | `build_exe.py` | -- |
+| `cmd` | `build_exe.py` | -- |
 | `logger` | `cdp_client.py` | -- |
 | `DEFAULT_CDP_PORT` | `cdp_client.py` | -- |
 | `CDP_TIMEOUT` | `cdp_client.py` | -- |
@@ -48,6 +50,125 @@ type: reference
 | `GEMINI_SELECTORS` | `cdp_client.py` | -- |
 | `CHATGPT_SELECTORS` | `cdp_client.py` | -- |
 | `run_diagnostics` | `cdp_test.py` | Run full CDP diagnostics. |
+| `ROOT` | `patch_upstream.py` | -- |
+| `patch_copy_button_layout` | `patch_upstream.py` | -- |
+| `patch_launcher_wrapper` | `patch_upstream.py` | -- |
+| `patch_build_script` | `patch_upstream.py` | -- |
+| `main` | `patch_upstream.py` | -- |
+| `logger` | `session_manager.py` | -- |
+| `CORNERS` | `session_manager.py` | -- |
+| `MAX_SESSIONS` | `session_manager.py` | -- |
+| `Session` | `session_manager.py` | One AI browser session — a window, a client, and a task queue. |
+| `SessionManager` | `session_manager.py` | Manages up to 4 simultaneous AI browser sessions. |
+| `logger` | `smart_router.py` | -- |
+| `SMART_ROUTER_AVAILABLE` | `smart_router.py` | -- |
+| `FREE_PROFILES` | `smart_router.py` | -- |
+| `CLAUDE_PROFILES` | `smart_router.py` | -- |
+| `SmartRouter` | `smart_router.py` | Classify prompts and route between free + Claude sessions. |
+| `logger` | `universal_client.py` | -- |
+| `AI_URL_PATTERNS` | `universal_client.py` | -- |
+| `UniversalBrowserClient` | `universal_client.py` | Controls ANY AI web chat through browser automation. |
+| `BrowserGeminiClient` | `universal_client.py` | Legacy alias — creates a UniversalBrowserClient with Gemini preset. |
+| `logger` | `window_manager.py` | -- |
+| `WindowRect` | `window_manager.py` | Screen rectangle. |
+| `ScreenInfo` | `window_manager.py` | Screen dimensions. |
+| `get_screen_size` | `window_manager.py` | Get primary monitor resolution. |
+| `get_quarter_rect` | `window_manager.py` | Get a 1/4 screen rectangle for a given corner. |
+| `find_windows_by_title` | `window_manager.py` | Find ALL visible windows whose title contains the pattern (case-insensitive). |
+| `find_chrome_windows` | `window_manager.py` | Backward compat: find Chrome windows. |
+| `move_window` | `window_manager.py` | Move and resize a window by its handle. |
+| `position_existing_window` | `window_manager.py` | Reposition an existing window to a quarter of the screen. |
+| `find_and_position_window` | `window_manager.py` | Find a window by title pattern and move it to the given corner. |
+| `main` | `__main__.py` | -- |
+| `main` | `ai/__main__.py` | -- |
+| `logger` | `classifier/classifier.py` | -- |
+| `PromptClassifier` | `classifier/classifier.py` | Classify prompts by complexity and route to free models or Claude. |
+| `TaskSplitter` | `classifier/splitter.py` | Split a prompt into free-model and Claude subtasks. |
+| `TaskClassification` | `classifier/types.py` | Result of classifying a prompt. |
+| `SubTask` | `classifier/types.py` | A single decomposed piece of a prompt. |
+| `RoutingResult` | `classifier/types.py` | Complete routing output from the splitter. |
+| `ModelInfo` | `classifier/types.py` | Description of an available model. |
+| `BackendResponse` | `classifier/types.py` | Response from any AI backend. |
+| `SavingsEvent` | `classifier/types.py` | Single routing event for the tracker. |
+| `SavingsSummary` | `classifier/types.py` | Aggregate savings stats. |
+| `logger` | `claude_backend/auto_inject.py` | -- |
+| `SETTINGS_PATH` | `claude_backend/auto_inject.py` | -- |
+| `HOOK_ID` | `claude_backend/auto_inject.py` | -- |
+| `HOOK_DESCRIPTION` | `claude_backend/auto_inject.py` | -- |
+| `check_status` | `claude_backend/auto_inject.py` | Check if auto-inject is installed. Returns status dict. |
+| `install` | `claude_backend/auto_inject.py` | Install the SessionStart hook. Returns (success, message). |
+| `uninstall` | `claude_backend/auto_inject.py` | Remove the SessionStart hook. Returns (success, message). |
+| `logger` | `claude_backend/backend.py` | -- |
+| `ClaudeContextManager` | `claude_backend/backend.py` | Main orchestrator for the Claude token saver. |
+| `main` | `claude_backend/cli.py` | -- |
+| `logger` | `claude_backend/config.py` | -- |
+| `DEFAULT_EXTENSIONS` | `claude_backend/config.py` | -- |
+| `DEFAULT_IGNORE_DIRS` | `claude_backend/config.py` | -- |
+| `ScanConfig` | `claude_backend/config.py` | Configuration for scanning and generation. |
+| `load_config` | `claude_backend/config.py` | Load config with layered defaults. |
+| `save_config_example` | `claude_backend/config.py` | Write a config example to disk. |
+| `logger` | `claude_backend/gui.py` | -- |
+| `C` | `claude_backend/gui.py` | -- |
+| `F` | `claude_backend/gui.py` | -- |
+| `M` | `claude_backend/gui.py` | -- |
+| `TEMPLATES` | `claude_backend/gui.py` | -- |
+| `AI_TUTORIAL_TEXT` | `claude_backend/gui.py` | -- |
+| `TUTORIAL_TEXT` | `claude_backend/gui.py` | -- |
+| `TokenSaverApp` | `claude_backend/gui.py` | -- |
+| `main` | `claude_backend/gui.py` | -- |
+| `logger` | `claude_backend/manifest.py` | -- |
+| `ManifestEntry` | `claude_backend/manifest.py` | A single entry in the generation manifest. |
+| `Manifest` | `claude_backend/manifest.py` | Tracks generated files for delta updates. |
+| `logger` | `claude_backend/ollama_manager.py` | -- |
+| `DEFAULT_HOST` | `claude_backend/ollama_manager.py` | -- |
+| `RECOMMENDED_MODELS` | `claude_backend/ollama_manager.py` | -- |
+| `TURBO_QUANTS` | `claude_backend/ollama_manager.py` | -- |
+| `CODING_KEYWORDS` | `claude_backend/ollama_manager.py` | -- |
+| `OllamaManager` | `claude_backend/ollama_manager.py` | Manages Ollama models via HTTP API. No pip package needed. |
+| `logger` | `claude_backend/prefs.py` | -- |
+| `PREFS_PATH` | `claude_backend/prefs.py` | -- |
+| `Prefs` | `claude_backend/prefs.py` | User-facing preferences. Add fields here; defaults always backfilled. |
+| `ROLES` | `claude_backend/prompt_builder.py` | -- |
+| `CONSTRAINTS` | `claude_backend/prompt_builder.py` | -- |
+| `REASONING` | `claude_backend/prompt_builder.py` | -- |
+| `detect_intent` | `claude_backend/prompt_builder.py` | Detect what the user is trying to do from their request text. |
+| `clean_request` | `claude_backend/prompt_builder.py` | Clean up sloppy English in the user's request before it goes to Claude. |
+| `build_smart_prompt` | `claude_backend/prompt_builder.py` | Build a lean structured prompt from user request + code context. |
+| `review_prompt` | `claude_backend/prompt_builder.py` | Analyze the built prompt for token efficiency. |
+| `get_domain` | `claude_backend/search.py` | Get the domain label for a code block based on its file path. |
+| `get_domain_color` | `claude_backend/search.py` | Get the badge color for a domain. |
+| `get_all_domains` | `claude_backend/search.py` | Get sorted list of unique domains present in the snippets. |
+| `score_block` | `claude_backend/search.py` | Score a code block against expanded query terms. |
+| `SearchIndex` | `claude_backend/search.py` | Pre-computed inverted index for fast searching over large snippet sets. |
+| `smart_search` | `claude_backend/search.py` | Search snippets with fuzzy matching, synonyms, and intent detection. |
+| `logger` | `claude_backend/storage.py` | -- |
+| `ProjectStorage` | `claude_backend/storage.py` | Manages file storage for a Claude project directory. |
+| `logger` | `claude_backend/tokenizer.py` | -- |
+| `count_tokens` | `claude_backend/tokenizer.py` | Count tokens accurately with BPE, fallback to heuristic. |
+| `has_bpe` | `claude_backend/tokenizer.py` | Check if real BPE tokenizer is available. |
+| `logger` | `claude_backend/tracker.py` | -- |
+| `TokenTracker` | `claude_backend/tracker.py` | Persistent token savings counter stored in ~/.claude/token_savings.jsonl. |
+| `SessionMemory` | `claude_backend/tracker.py` | Tracks what's been sent to Claude in a project's context. |
+| `logger` | `claude_backend/tray.py` | -- |
+| `ICON_SIZE` | `claude_backend/tray.py` | -- |
+| `SNOOZE_FILE` | `claude_backend/tray.py` | -- |
+| `build_menu` | `claude_backend/tray.py` | Tray right-click menu. Default item (single-click) opens GUI. |
+| `run` | `claude_backend/tray.py` | Start tray icon. Blocks until user picks Quit. |
+| `FileEntry` | `claude_backend/types.py` | A discovered file from any scanner. |
+| `CodeBlock` | `claude_backend/types.py` | An extracted code block (function, class, etc.). |
+| `ModuleInfo` | `claude_backend/types.py` | Information about a Python module. |
+| `ConventionReport` | `claude_backend/types.py` | Detected coding conventions. |
+| `ProjectAnalysis` | `claude_backend/types.py` | Complete analysis of a project. |
+| `GenerationResult` | `claude_backend/types.py` | Result of a generation run. |
+| `logger` | `claude_backend/welcome.py` | -- |
+| `WELCOME_TITLE` | `claude_backend/welcome.py` | -- |
+| `WELCOME_INTRO` | `claude_backend/welcome.py` | -- |
+| `WHAT_IT_DOES` | `claude_backend/welcome.py` | -- |
+| `PERMISSIONS` | `claude_backend/welcome.py` | -- |
+| `QUICK_START` | `claude_backend/welcome.py` | -- |
+| `PRO_TIP` | `claude_backend/welcome.py` | -- |
+| `WelcomeDialog` | `claude_backend/welcome.py` | Modal welcome window. Closes on dismiss; updates prefs. |
+| `show_welcome` | `claude_backend/welcome.py` | Open welcome window. Returns dialog instance (caller can grab focus etc). |
 | `logger` | `claude_backend/analyzers/code_extractor.py` | -- |
 | `extract_python_blocks` | `claude_backend/analyzers/code_extractor.py` | Extract functions and classes from Python source using AST. |
 | `extract_js_blocks` | `claude_backend/analyzers/code_extractor.py` | Extract function and class blocks from JS/TS source. |
@@ -58,15 +179,6 @@ type: reference
 | `logger` | `claude_backend/analyzers/structure_mapper.py` | -- |
 | `map_modules` | `claude_backend/analyzers/structure_mapper.py` | Analyze Python files to extract module-level information. |
 | `build_import_graph` | `claude_backend/analyzers/structure_mapper.py` | Build a dict mapping module path -> list of internal imports. |
-| `logger` | `claude_backend/backend.py` | -- |
-| `ClaudeContextManager` | `claude_backend/backend.py` | Main orchestrator for the Claude token saver. |
-| `main` | `claude_backend/cli.py` | -- |
-| `logger` | `claude_backend/config.py` | -- |
-| `DEFAULT_EXTENSIONS` | `claude_backend/config.py` | -- |
-| `DEFAULT_IGNORE_DIRS` | `claude_backend/config.py` | -- |
-| `ScanConfig` | `claude_backend/config.py` | Configuration for scanning and generation. |
-| `load_config` | `claude_backend/config.py` | Load config with layered defaults. |
-| `save_config_example` | `claude_backend/config.py` | Write a config example to disk. |
 | `logger` | `claude_backend/generators/claude_md.py` | -- |
 | `MARKER_START` | `claude_backend/generators/claude_md.py` | -- |
 | `MARKER_END` | `claude_backend/generators/claude_md.py` | -- |
@@ -80,9 +192,6 @@ type: reference
 | `logger` | `claude_backend/generators/snippet_library.py` | -- |
 | `generate_snippet_library` | `claude_backend/generators/snippet_library.py` | Generate snippet files organized by category. |
 | `write_snippet_library` | `claude_backend/generators/snippet_library.py` | Write snippet library to project's .claude/snippets/ directory. |
-| `logger` | `claude_backend/manifest.py` | -- |
-| `ManifestEntry` | `claude_backend/manifest.py` | A single entry in the generation manifest. |
-| `Manifest` | `claude_backend/manifest.py` | Tracks generated files for delta updates. |
 | `logger` | `claude_backend/scanners/github.py` | -- |
 | `GITHUB_API` | `claude_backend/scanners/github.py` | -- |
 | `scan_github_sources` | `claude_backend/scanners/github.py` | Scan configured GitHub sources and return FileEntry list. |
@@ -91,18 +200,23 @@ type: reference
 | `logger` | `claude_backend/scanners/project.py` | -- |
 | `BINARY_CHECK_SIZE` | `claude_backend/scanners/project.py` | -- |
 | `scan_project` | `claude_backend/scanners/project.py` | Scan a project directory and return all matching files. |
+| `scan_project_fast_mtimes` | `claude_backend/scanners/project.py` | Fast scan that only returns {relative_path: mtime} without reading content. |
 | `get_language_stats` | `claude_backend/scanners/project.py` | Count files by extension. |
 | `find_entry_points` | `claude_backend/scanners/project.py` | Find likely entry point files. |
 | `find_key_files` | `claude_backend/scanners/project.py` | Find important project files that exist at the root. |
 | `find_dependencies` | `claude_backend/scanners/project.py` | Extract dependency names from requirements.txt or pyproject.toml. |
-| `logger` | `claude_backend/storage.py` | -- |
-| `ProjectStorage` | `claude_backend/storage.py` | Manages file storage for a Claude project directory. |
-| `FileEntry` | `claude_backend/types.py` | A discovered file from any scanner. |
-| `CodeBlock` | `claude_backend/types.py` | An extracted code block (function, class, etc.). |
-| `ModuleInfo` | `claude_backend/types.py` | Information about a Python module. |
-| `ConventionReport` | `claude_backend/types.py` | Detected coding conventions. |
-| `ProjectAnalysis` | `claude_backend/types.py` | Complete analysis of a project. |
-| `GenerationResult` | `claude_backend/types.py` | Result of a generation run. |
+| `DATA_DIR` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `LOG_FILE` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `MD_LOG` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `SQLITE_PATH` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `INSERT_FILE` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `logger` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `ensure_data_dir` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `read_message` | `extension_native_bridge/host/claude_native_host.py` | Read one Native Messaging frame from stdin. |
+| `write_message` | `extension_native_bridge/host/claude_native_host.py` | Send one frame to Chrome. |
+| `init_sqlite` | `extension_native_bridge/host/claude_native_host.py` | -- |
+| `HOST_NAME` | `extension_native_bridge/scripts/install_host_windows.py` | -- |
+| `main` | `extension_native_bridge/scripts/install_host_windows.py` | -- |
 | `AppConfig` | `gemini_coder/config.py` | Application configuration. |
 | `ConfigManager` | `gemini_coder/config.py` | Manages application configuration with persistence. |
 | `logger` | `gemini_coder/expander.py` | -- |
@@ -133,7 +247,6 @@ type: reference
 | `SPACING` | `gemini_coder/ui/theme.py` | -- |
 | `ICONS` | `gemini_coder/ui/theme.py` | -- |
 | `get_colors` | `gemini_coder/ui/theme.py` | Get color scheme based on theme. |
-| `main` | `gemini_coder_web/__main__.py` | -- |
 | `logger` | `gemini_coder_web/ai_profiles.py` | -- |
 | `AIProfile` | `gemini_coder_web/ai_profiles.py` | Describes how to automate a specific AI web chat. |
 | `GEMINI_PROFILE` | `gemini_coder_web/ai_profiles.py` | -- |
@@ -177,10 +290,6 @@ type: reference
 | `MAX_SESSIONS` | `gemini_coder_web/session_manager.py` | -- |
 | `Session` | `gemini_coder_web/session_manager.py` | One AI browser session — a window, a client, and a task queue. |
 | `SessionManager` | `gemini_coder_web/session_manager.py` | Manages up to 4 simultaneous AI browser sessions. |
-| `logger` | `gemini_coder_web/ui/app_web.py` | -- |
-| `CORNER_LABELS` | `gemini_coder_web/ui/app_web.py` | -- |
-| `SessionCard` | `gemini_coder_web/ui/app_web.py` | UI card for one AI session slot (one corner of the screen). |
-| `GeminiCoderWebApp` | `gemini_coder_web/ui/app_web.py` | AI Browser Coder - multi-session universal AI automation. |
 | `logger` | `gemini_coder_web/universal_client.py` | -- |
 | `AI_URL_PATTERNS` | `gemini_coder_web/universal_client.py` | -- |
 | `UniversalBrowserClient` | `gemini_coder_web/universal_client.py` | Controls ANY AI web chat through browser automation. |
@@ -195,143 +304,94 @@ type: reference
 | `move_window` | `gemini_coder_web/window_manager.py` | Move and resize a window by its handle. |
 | `position_existing_window` | `gemini_coder_web/window_manager.py` | Reposition an existing window to a quarter of the screen. |
 | `find_and_position_window` | `gemini_coder_web/window_manager.py` | Find a window by title pattern and move it to the given corner. |
+| `main` | `gemini_coder_web/__main__.py` | -- |
+| `logger` | `gemini_coder_web/ui/app_web.py` | -- |
+| `CORNER_LABELS` | `gemini_coder_web/ui/app_web.py` | -- |
+| `SessionCard` | `gemini_coder_web/ui/app_web.py` | UI card for one AI session slot (one corner of the screen). |
+| `GeminiCoderWebApp` | `gemini_coder_web/ui/app_web.py` | AI Browser Coder - multi-session universal AI automation. |
+| `tracker_path` | `scripts/analyze_real_savings.py` | -- |
+| `events` | `scripts/analyze_real_savings.py` | -- |
+| `PROJECT_SIZES` | `scripts/analyze_real_savings.py` | -- |
+| `AVG_FILE_TOKENS` | `scripts/analyze_real_savings.py` | -- |
+| `context_builds` | `scripts/analyze_real_savings.py` | -- |
+| `bootstraps` | `scripts/analyze_real_savings.py` | -- |
+| `preps` | `scripts/analyze_real_savings.py` | -- |
+| `copies` | `scripts/analyze_real_savings.py` | -- |
+| `tests` | `scripts/analyze_real_savings.py` | -- |
+| `total_provided` | `scripts/analyze_real_savings.py` | -- |
 | `main` | `scripts/export_all_to_zip.py` | -- |
+| `project` | `scripts/full_audit.py` | -- |
+| `mgr` | `scripts/full_audit.py` | -- |
+| `analysis` | `scripts/full_audit.py` | -- |
+| `snippets` | `scripts/full_audit.py` | -- |
+| `total_src` | `scripts/full_audit.py` | -- |
+| `cm` | `scripts/full_audit.py` | -- |
+| `cmd_tok` | `scripts/full_audit.py` | -- |
+| `md` | `scripts/full_audit.py` | -- |
+| `mem_files` | `scripts/full_audit.py` | -- |
+| `mem_tok` | `scripts/full_audit.py` | -- |
+| `project` | `scripts/gen_breakdown.py` | -- |
+| `mgr` | `scripts/gen_breakdown.py` | -- |
+| `analysis` | `scripts/gen_breakdown.py` | -- |
+| `snippets` | `scripts/gen_breakdown.py` | -- |
+| `total_src` | `scripts/gen_breakdown.py` | -- |
+| `cm` | `scripts/gen_breakdown.py` | -- |
+| `cmd_tok` | `scripts/gen_breakdown.py` | -- |
+| `md` | `scripts/gen_breakdown.py` | -- |
+| `mem_tok` | `scripts/gen_breakdown.py` | -- |
+| `sd` | `scripts/gen_breakdown.py` | -- |
+| `tracker_path` | `scripts/max_plan_public.py` | -- |
+| `events` | `scripts/max_plan_public.py` | -- |
+| `anon` | `scripts/max_plan_public.py` | -- |
+| `project_tokens` | `scripts/max_plan_public.py` | -- |
+| `by_op` | `scripts/max_plan_public.py` | -- |
+| `by_day` | `scripts/max_plan_public.py` | -- |
+| `active_days` | `scripts/max_plan_public.py` | -- |
+| `context_events` | `scripts/max_plan_public.py` | -- |
+| `total_sent` | `scripts/max_plan_public.py` | -- |
+| `total_would` | `scripts/max_plan_public.py` | -- |
+| `tracker_path` | `scripts/max_plan_savings.py` | -- |
+| `events` | `scripts/max_plan_savings.py` | -- |
+| `by_op` | `scripts/max_plan_savings.py` | -- |
+| `by_day` | `scripts/max_plan_savings.py` | -- |
+| `first_day` | `scripts/max_plan_savings.py` | -- |
+| `last_day` | `scripts/max_plan_savings.py` | -- |
+| `active_days` | `scripts/max_plan_savings.py` | -- |
+| `projects_to_scan` | `scripts/max_plan_savings.py` | -- |
+| `project_sizes` | `scripts/max_plan_savings.py` | -- |
+| `context_events` | `scripts/max_plan_savings.py` | -- |
+| `avg_without` | `scripts/pro_plan_analysis.py` | -- |
+| `avg_with` | `scripts/pro_plan_analysis.py` | -- |
+| `avg_response` | `scripts/pro_plan_analysis.py` | -- |
+| `cw` | `scripts/pro_plan_analysis.py` | -- |
+| `exchange_without` | `scripts/pro_plan_analysis.py` | -- |
+| `exchange_with` | `scripts/pro_plan_analysis.py` | -- |
+| `turns_without` | `scripts/pro_plan_analysis.py` | -- |
+| `turns_with` | `scripts/pro_plan_analysis.py` | -- |
+| `extra_turns` | `scripts/pro_plan_analysis.py` | -- |
+| `input_wo` | `scripts/pro_plan_analysis.py` | -- |
+| `tracker_path` | `scripts/session_review.py` | -- |
+| `events` | `scripts/session_review.py` | -- |
+| `by_day` | `scripts/session_review.py` | -- |
+| `total_tok_sent` | `scripts/session_review.py` | -- |
+| `total_items` | `scripts/session_review.py` | -- |
+| `total_copies` | `scripts/session_review.py` | -- |
+| `avg_file` | `scripts/session_review.py` | -- |
+| `unique_ratio` | `scripts/session_review.py` | -- |
+| `would_read` | `scripts/session_review.py` | -- |
+| `saved` | `scripts/session_review.py` | -- |
 | `run_cli` | `scripts/smoke_test.py` | -- |
 | `main` | `scripts/smoke_test.py` | -- |
-| `logger` | `session_manager.py` | -- |
-| `CORNERS` | `session_manager.py` | -- |
-| `MAX_SESSIONS` | `session_manager.py` | -- |
-| `Session` | `session_manager.py` | One AI browser session — a window, a client, and a task queue. |
-| `SessionManager` | `session_manager.py` | Manages up to 4 simultaneous AI browser sessions. |
-| `main` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/__main__.py` | CLI entry point for GUI Builder. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/backend.py` | -- |
-| `GUIBuilderBackend` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/backend.py` | Central backend coordinating all GUI Builder operations. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | -- |
-| `ExtractedCode` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Result of code extraction from an API response. |
-| `MultiFileExtraction` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Result of extracting multiple files from a response. |
-| `extract_code` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Extract the primary code block from a Gemini response. |
-| `extract_multiple_files` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Extract multiple code files from a response. |
-| `inject_main_guard` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Add a main guard to code that lacks one. |
-| `strip_markdown` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Remove markdown formatting from a response, keeping only code. |
-| `get_required_packages` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/code_extractor.py` | Determine pip packages needed for the code. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | -- |
-| `CONFIG_FILE` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | -- |
-| `DEFAULT_MODEL` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | -- |
-| `AVAILABLE_MODELS` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | -- |
-| `SUPPORTED_FRAMEWORKS` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | -- |
-| `FRAMEWORK_DISPLAY` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | -- |
-| `AppConfig` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | Application configuration with defaults. |
-| `ConfigManager` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/config.py` | Load, save, and manage application configuration. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/diagnostics.py` | -- |
-| `REQUIRED_PACKAGES` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/diagnostics.py` | -- |
-| `OPTIONAL_PACKAGES` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/diagnostics.py` | -- |
-| `generate_diagnostic_report` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/diagnostics.py` | Generate a comprehensive diagnostic report. |
-| `copy_report_to_clipboard` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/diagnostics.py` | Copy the diagnostic report to the system clipboard. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/gemini_client.py` | -- |
-| `Message` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/gemini_client.py` | A single message in a conversation. |
-| `Conversation` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/gemini_client.py` | A conversation thread for iterative GUI building. |
-| `GUIGeminiClient` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/gemini_client.py` | Thread-safe Gemini client optimized for GUI generation tasks. |
-| `setup_logging` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/logger_setup.py` | Configure application-wide logging with file and console handlers. |
-| `get_recent_errors` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/logger_setup.py` | Read recent error lines from the log file. |
-| `APP_DIR_NAME` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | -- |
-| `PlatformInfo` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Detected platform information. |
-| `detect_platform` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Detect the current platform capabilities. |
-| `get_desktop_path` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Get the user's desktop path with fallback. |
-| `get_config_dir` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Get the application configuration directory. |
-| `get_data_dir` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Get the application data directory for projects. |
-| `get_log_dir` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Get the application log directory. |
-| `get_templates_dir` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/platform_utils.py` | Get the built-in templates directory. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/preview_runner.py` | -- |
-| `PreviewResult` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/preview_runner.py` | Result of a preview execution. |
-| `validate_code_safety` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/preview_runner.py` | Check code for potentially dangerous operations before execution. |
-| `PreviewRunner` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/preview_runner.py` | Run generated GUI code in a sandboxed subprocess. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/project_manager.py` | -- |
-| `ProjectFile` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/project_manager.py` | A single file in a project. |
-| `ProjectSnapshot` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/project_manager.py` | A version snapshot of the project. |
-| `Project` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/project_manager.py` | A GUI Builder project. |
-| `ProjectManager` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/project_manager.py` | Manage project persistence and operations. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | -- |
-| `FRAMEWORK_INSTRUCTIONS` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | -- |
-| `STYLE_MODIFIERS` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | -- |
-| `COMPONENT_CATALOG` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | -- |
-| `get_system_instruction` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | Get the system instruction for a specific framework. |
-| `build_generation_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | Build a structured prompt for GUI generation. |
-| `build_refinement_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | Build a prompt for refining existing GUI code. |
-| `build_component_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | Build a prompt for adding a component to existing code. |
-| `build_layout_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | Build a prompt for generating a layout skeleton. |
-| `build_clone_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/prompt_engine.py` | Build a prompt for cloning the look of a known application. |
-| `logger` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | -- |
-| `Template` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | A GUI template definition. |
-| `CATEGORIES` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | -- |
-| `get_all_templates` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Return all available templates. |
-| `get_templates_by_category` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Return templates filtered by category. |
-| `get_templates_by_framework` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Return templates compatible with a framework. |
-| `get_template_by_id` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Find a template by its ID. |
-| `search_templates` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Search templates by name, description, or tags. |
-| `get_categories` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Return all template categories. |
-| `get_template_count` | `sessions/ClaudeProjects/my_claude_project_ai/gui_builder/gui_builder/template_library.py` | Return total number of templates. |
-| `OLLAMA_URL` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/app.py` | -- |
-| `generate_response` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/app.py` | Send prompt to Ollama and return the response. |
-| `SAFE_RAM_THRESHOLD_MB` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/monitor.py` | -- |
-| `CPU_DANGER_THRESHOLD` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/monitor.py` | -- |
-| `get_system_health` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/monitor.py` | Returns dict with RAM, CPU, disk stats and overall status. |
-| `is_safe_to_generate` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/monitor.py` | Quick check: do we have enough resources to run inference? |
-| `OLLAMA_URL` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | -- |
-| `CATEGORIES` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | -- |
-| `MODEL_PREFERENCES` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | -- |
-| `get_available_models` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | Fetch all models from local Ollama. |
-| `classify_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | Classify a prompt into a category based on keyword matching. |
-| `pick_best_model` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | Given a category and available models, pick the best match. |
-| `route_prompt` | `sessions/ClaudeProjects/my_claude_project_ai/local_hub/local_hub/router.py` | Full routing pipeline: classify prompt -> pick model -> return decision. |
-| `BG` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `BG_LIGHT` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `FG` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `ACCENT` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `GREEN` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `RED` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `YELLOW` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `BORDER` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `DIM` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `LocalRelayApp` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/app.py` | -- |
-| `JOBS_DIR` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `LOCK_FILE` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `CODE_EXTENSIONS` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `MAX_CHUNK_CHARS` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `PROMPTS` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `SCOPE_PROMPT` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `BRIEF_PROMPT` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `CHANGELOG_PROMPT` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `CHANGELOG_PATTERNS` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `CHANGELOG_GLOB_PATTERNS` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/job_config.py` | -- |
-| `strip_json_fences` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Strip markdown code fences from JSON responses. |
-| `cmd_new` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Create a new code analysis job. |
-| `cmd_status` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Show current job status. |
-| `cmd_process` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Run Qwen preprocessing on all pending files. |
-| `cmd_summary` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Generate a compact Claude-ready summary from all processed results. |
-| `cmd_feed` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Feed Claude's response back through Qwen for local processing. |
-| `cmd_export` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Export the full exchange history. |
-| `cmd_close` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | Close the active job and release the lock. |
-| `main` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/local_relay.py` | -- |
-| `OLLAMA_URL` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | -- |
-| `DEFAULT_MODEL` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | -- |
-| `TIMEOUT` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | -- |
-| `is_available` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | -- |
-| `list_models` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | -- |
-| `ask_local` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | Send a prompt to the local Ollama model and return the full response text. |
-| `ask_local_chat` | `sessions/ClaudeProjects/my_claude_project_ai/local_relay/local_relay/ollama_client.py` | Chat-style API for multi-turn exchanges. |
-| `BG` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `SURFACE` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `ACCENT` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `PURPLE` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `GREEN` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `RED` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `TEXT` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `FONT` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `FONT_BOLD` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `FONT_MONO` | `sessions/ClaudeProjects/my_claude_project_ai/prompt_architect/prompt_architect/prompt_architect.py` | -- |
-| `add` | `sessions/ClaudeProjects/my_claude_project_ai/tests/literag_sample/sample.py` | -- |
-| `multiply` | `sessions/ClaudeProjects/my_claude_project_ai/tests/literag_sample/sample.py` | -- |
-| `do_something` | `sessions/ClaudeProjects/my_claude_project_ai/tests/literag_sample/sample.py` | -- |
+| `tracker_path` | `scripts/weekly_projection.py` | -- |
+| `events` | `scripts/weekly_projection.py` | -- |
+| `by_day` | `scripts/weekly_projection.py` | -- |
+| `AVG_FILE` | `scripts/weekly_projection.py` | -- |
+| `first` | `scripts/weekly_projection.py` | -- |
+| `last` | `scripts/weekly_projection.py` | -- |
+| `total_prompts` | `scripts/weekly_projection.py` | -- |
+| `total_sent` | `scripts/weekly_projection.py` | -- |
+| `total_items` | `scripts/weekly_projection.py` | -- |
+| `active_days` | `scripts/weekly_projection.py` | -- |
 | `add` | `tests/literag_sample/sample.py` | -- |
 | `multiply` | `tests/literag_sample/sample.py` | -- |
 | `do_something` | `tests/literag_sample/sample.py` | -- |
@@ -339,17 +399,3 @@ type: reference
 | `CORNER_LABELS` | `ui/app_web.py` | -- |
 | `SessionCard` | `ui/app_web.py` | UI card for one AI session slot (one corner of the screen). |
 | `GeminiCoderWebApp` | `ui/app_web.py` | AI Browser Coder - multi-session universal AI automation. |
-| `logger` | `universal_client.py` | -- |
-| `AI_URL_PATTERNS` | `universal_client.py` | -- |
-| `UniversalBrowserClient` | `universal_client.py` | Controls ANY AI web chat through browser automation. |
-| `BrowserGeminiClient` | `universal_client.py` | Legacy alias — creates a UniversalBrowserClient with Gemini preset. |
-| `logger` | `window_manager.py` | -- |
-| `WindowRect` | `window_manager.py` | Screen rectangle. |
-| `ScreenInfo` | `window_manager.py` | Screen dimensions. |
-| `get_screen_size` | `window_manager.py` | Get primary monitor resolution. |
-| `get_quarter_rect` | `window_manager.py` | Get a 1/4 screen rectangle for a given corner. |
-| `find_windows_by_title` | `window_manager.py` | Find ALL visible windows whose title contains the pattern (case-insensitive). |
-| `find_chrome_windows` | `window_manager.py` | Backward compat: find Chrome windows. |
-| `move_window` | `window_manager.py` | Move and resize a window by its handle. |
-| `position_existing_window` | `window_manager.py` | Reposition an existing window to a quarter of the screen. |
-| `find_and_position_window` | `window_manager.py` | Find a window by title pattern and move it to the given corner. |

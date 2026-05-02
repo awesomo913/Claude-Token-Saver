@@ -13,7 +13,7 @@ Analyzed 20 Python files.
 - **String formatting**: mixed
 - **Error handling**: broad
 - **Logging**: print
-- **Imports**: mixed
+- **Imports**: absolute
 
 ## Rules to follow
 

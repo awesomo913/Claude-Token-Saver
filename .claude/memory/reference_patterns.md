@@ -17,4 +17,4 @@ type: reference
 - Primary style: pathlib
 
 ## Import Style
-- Primary style: mixed
+- Primary style: absolute

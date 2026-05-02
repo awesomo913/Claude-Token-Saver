@@ -1,4 +1,4 @@
-# From: broadcast.py:146
+# From: broadcast.py:166
 
 @dataclass
 class BroadcastConfig:
@@ -11,3 +11,4 @@ class BroadcastConfig:
     endless: bool = True
     max_iterations: int = 999  # Safety cap
     time_limit_minutes: int = 0  # 0 = no limit
+    smart_route: bool = False  # Classify + split: free parts → Gemini, hard → Claude
