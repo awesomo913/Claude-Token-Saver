@@ -49,6 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     p_clean.add_argument("project_path", type=Path, help="Path to target project")
     p_clean.add_argument("--yes", action="store_true", help="Skip confirmation")
 
+    # tray — system tray icon (passive reminder + quick actions)
+    sub.add_parser("tray", help="Run system tray icon")
+
     args = parser.parse_args(argv)
 
     # Configure logging
@@ -58,6 +61,11 @@ def main(argv: list[str] | None = None) -> int:
         format="%(levelname)s: %(message)s",
         stream=sys.stderr,
     )
+
+    # tray has no project_path / no config — handle before loading config
+    if args.command == "tray":
+        from .tray import run as _tray_run
+        return _tray_run()
 
     # Load config
     config = load_config(

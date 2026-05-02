@@ -549,7 +549,7 @@ jobs:
       
       - name: Commit results
         run: |
-          git config user.email "analytics@bot.local"
+          git config user.email "analytics@bot.local"  # pii-ok: placeholder for CI bot, not a real address
           git config user.name "Analytics Bot"
           git add docs/analytics/
           git commit -m "Auto-update analytics" || true

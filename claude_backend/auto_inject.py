@@ -27,13 +27,14 @@ def _build_hook_command() -> str:
     """Build the shell command that runs prep on session start.
 
     Uses $CLAUDE_PROJECT_DIR if available, else falls back to cwd.
-    Runs python -m claude_backend prep silently — never blocks session start.
+    --quiet silences output; trailing `|| true` ensures hook never blocks
+    session start on prep failure. No '> nul' redirect: under git bash that
+    creates a stray file named 'nul' in the cwd instead of swallowing output.
     """
     python_exe = sys.executable.replace("\\", "/")
-    # Run as background task: if prep fails, don't block session
     return (
-        f'"{python_exe}" -m claude_backend prep "${{CLAUDE_PROJECT_DIR:-.}}" '
-        f'--quiet > nul 2>&1 || true'
+        f'"{python_exe}" -m claude_backend prep '
+        f'"${{CLAUDE_PROJECT_DIR:-.}}" --quiet || true'
     )
 
 
@@ -61,18 +62,28 @@ def check_status() -> dict:
         status["error"] = f"Cannot read settings.json: {e}"
         return status
 
-    # Look for our hook in SessionStart
+    # Look for our hook in SessionStart — check command string AND # id annotation.
+    # HOOK_ID lives in the "# id" field, not always in command, so we must check both.
     hooks = data.get("hooks", {})
     session_hooks = hooks.get("SessionStart", [])
     for hook_entry in session_hooks:
-        if isinstance(hook_entry, dict):
-            for h in hook_entry.get("hooks", []):
-                if isinstance(h, dict) and HOOK_ID in str(h.get("command", "")):
-                    status["installed"] = True
-                    return status
-            if HOOK_ID in str(hook_entry.get("command", "")):
+        if not isinstance(hook_entry, dict):
+            continue
+        for h in hook_entry.get("hooks", []):
+            if not isinstance(h, dict):
+                continue
+            if HOOK_ID in str(h.get("# id", "")):
                 status["installed"] = True
                 return status
+            if HOOK_ID in str(h.get("command", "")):
+                status["installed"] = True
+                return status
+            if "claude_backend prep" in str(h.get("command", "")):
+                status["installed"] = True
+                return status
+        if HOOK_ID in str(hook_entry.get("command", "")):
+            status["installed"] = True
+            return status
 
     return status
 

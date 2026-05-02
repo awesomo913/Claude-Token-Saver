@@ -15,3 +15,7 @@ dist/
 sessions/
 CLAUDE_LOG.jsonl
 CLAUDE_MANIFEST.jsonl
+
+# Windows reserved name leak from shell redirects ('> nul' under git bash)
+/nul
+nul.txt

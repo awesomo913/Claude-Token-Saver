@@ -24,11 +24,13 @@ from .backend import ClaudeContextManager
 from .config import ScanConfig, load_config
 from .generators.memory_files import compute_project_slug, get_memory_dirs
 from .ollama_manager import OllamaManager, RECOMMENDED_MODELS
+from .prefs import Prefs
 from .prompt_builder import build_smart_prompt, detect_intent, review_prompt, ROLES
 from .search import smart_search, get_domain, get_domain_color, get_all_domains
 from .tokenizer import count_tokens
 from .tracker import SessionMemory, TokenTracker
 from .types import CodeBlock, GenerationResult, ProjectAnalysis
+from .welcome import show_welcome
 
 logger = logging.getLogger(__name__)
 
@@ -199,10 +201,16 @@ class TokenSaverApp(ctk.CTk):
         self._ollama = OllamaManager()
         self._auto_scan_id: Optional[str] = None
         self._auto_scan_interval = 10 * 60 * 1000  # 10 minutes in ms
+        self._prefs = Prefs.load()
+        self._welcome_dlg: Optional[ctk.CTkToplevel] = None
 
         self._build_ui()
         self._show_view("dashboard")
         self._update_token_display()
+
+        # Show welcome on launch unless user disabled it
+        if self._prefs.show_welcome_on_launch:
+            self.after(400, self._open_welcome)
 
     # ── Skeleton ────────────────────────────────────────────────────────
     def _build_ui(self) -> None:
@@ -222,6 +230,15 @@ class TokenSaverApp(ctk.CTk):
                               text_color=C["fg2"], corner_radius=6,
                               command=lambda k=key: self._show_view(k))
             b.pack(fill="x", padx=8, pady=2); self._nav_btns[key] = b
+
+        # Help button — always visible, always available
+        help_btn = ctk.CTkButton(
+            sb, text="  ?  Help / Welcome", anchor="w", font=(F, 12, "bold"),
+            height=36, fg_color="transparent", hover_color=C["side_act"],
+            text_color=C["accent"], corner_radius=6,
+            command=self._open_welcome,
+        )
+        help_btn.pack(fill="x", padx=8, pady=(20, 4), side="bottom")
 
         ctk.CTkLabel(sb, text="v4.5", font=(F, 9), text_color=C["fg3"]).pack(side="bottom", pady=8)
 
@@ -265,6 +282,27 @@ class TokenSaverApp(ctk.CTk):
             self._rebuild_domain_tabs()
         elif name == "settings" and hasattr(self, "_ai_status_lbl"):
             self._ai_refresh_status()
+
+    def _open_welcome(self) -> None:
+        """Open welcome dialog. Reuses existing window if already open."""
+        if self._welcome_dlg is not None and self._welcome_dlg.winfo_exists():
+            self._welcome_dlg.lift()
+            self._welcome_dlg.focus_force()
+            return
+
+        def _on_install_done() -> None:
+            # Refresh Settings tab status if user installed from welcome
+            if hasattr(self, "_ai_status_lbl"):
+                self._ai_refresh_status()
+            self._toast("Auto-Inject installed", "success")
+
+        try:
+            self._welcome_dlg = show_welcome(
+                self, self._prefs, on_install_callback=_on_install_done,
+            )
+        except Exception as e:
+            logger.exception("Failed to open welcome dialog")
+            self._toast(f"Welcome dialog failed: {e}", "error")
 
     def _toast(self, msg: str, lv: str = "info") -> None:
         cm = {"success": C["ok"], "warning": C["warn"], "error": C["err"], "info": C["accent"]}
@@ -1599,6 +1637,39 @@ class TokenSaverApp(ctk.CTk):
         self._ai_tutorial_visible = False
 
         # ═══════════════════════════════════════════════════════════
+        #  ONBOARDING / WELCOME PANEL
+        # ═══════════════════════════════════════════════════════════
+        wel_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                                border_width=1, border_color=C["accent"])
+        wel_card.pack(fill="x", padx=20, pady=(0, 12))
+
+        wh = ctk.CTkFrame(wel_card, fg_color="transparent")
+        wh.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(wh, text="Welcome / Onboarding", font=(F, 14, "bold"),
+                     text_color=C["accent"]).pack(side="left")
+        ctk.CTkButton(wh, text="Open Welcome Now", width=160, height=28,
+                      font=(F, 11, "bold"), fg_color=C["accent"],
+                      command=self._open_welcome).pack(side="right")
+
+        ctk.CTkLabel(
+            wel_card,
+            text="The welcome dialog explains what Token Saver does, what "
+                 "permissions it uses, and walks you through the workflow. "
+                 "It opens automatically on launch until you disable it here.",
+            font=(F, 10), text_color=C["fg3"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 6), anchor="w")
+
+        self._set_show_welcome = ctk.CTkCheckBox(
+            wel_card, text="Show welcome dialog on every launch",
+            font=(F, 12), command=self._save_welcome_pref,
+        )
+        self._set_show_welcome.pack(padx=20, pady=(2, 12), anchor="w")
+        if self._prefs.show_welcome_on_launch:
+            self._set_show_welcome.select()
+        else:
+            self._set_show_welcome.deselect()
+
+        # ═══════════════════════════════════════════════════════════
         #  OLLAMA MODEL MANAGER
         # ═══════════════════════════════════════════════════════════
         ollama_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8, border_width=2, border_color=C["purple"])
@@ -1893,6 +1964,15 @@ class TokenSaverApp(ctk.CTk):
         else:
             self._toast(msg, "warning")
         self._ai_refresh_status()
+
+    def _save_welcome_pref(self) -> None:
+        """Persist 'show welcome on launch' checkbox state."""
+        self._prefs.show_welcome_on_launch = bool(self._set_show_welcome.get())
+        if self._prefs.save():
+            state = "ON" if self._prefs.show_welcome_on_launch else "OFF"
+            self._toast(f"Welcome on launch: {state}", "info")
+        else:
+            self._toast("Failed to save preference", "warning")
 
     def _ai_show_tutorial(self) -> None:
         """Toggle the Auto-Inject tutorial text."""
