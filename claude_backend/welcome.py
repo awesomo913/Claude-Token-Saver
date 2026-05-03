@@ -76,7 +76,8 @@ QUICK_START = [
     "4. From now on, every Claude Code session auto-refreshes context.",
     "5. (Optional) Settings tab → 'Auto-launch on Claude Code session' toggle. "
     "When ON, every Claude Code session opens Token Saver so you're reminded "
-    "to grab targeted snippets. Defaults to opening minimized to tray.",
+    "to grab targeted snippets. Installs TWO hooks: SessionStart (new sessions) "
+    "and UserPromptSubmit (existing sessions on next prompt). Both idempotent.",
     "6. For specific questions, open Context Builder, search snippets, click Grab, "
     "Copy, paste before your Claude Code prompt.",
 ]

@@ -41,10 +41,17 @@ SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 HOOK_ID = "claude_token_saver_auto_prep"
 HOOK_DESCRIPTION = "Claude Token Saver — auto-refresh context on session start"
 
-# Launcher hook (auto-opens GUI/tray if enabled in prefs).
+# Launcher hook on SessionStart (auto-opens GUI/tray when a NEW session starts).
 HOOK_ID_LAUNCH = "claude_token_saver_session_launch"
 HOOK_DESC_LAUNCH = (
     "Claude Token Saver — auto-launch GUI on session start (gated by user pref)"
+)
+
+# Launcher hook on UserPromptSubmit. Idempotent — exits in ms if GUI already
+# running. Lets existing sessions trigger on next prompt without restart.
+HOOK_ID_PROMPT = "claude_token_saver_prompt_launch"
+HOOK_DESC_PROMPT = (
+    "Claude Token Saver — auto-launch on first prompt of existing sessions"
 )
 
 # Substring patterns used as legacy fallback when "# id" field is missing.
@@ -217,8 +224,10 @@ def _filter_session_hooks(
     return out, removed
 
 
-def _check_hook(hook_id: str, legacy_substr: str | None) -> dict:
-    """Generic status check for any hook id."""
+def _check_hook(
+    hook_id: str, legacy_substr: str | None, event: str = "SessionStart",
+) -> dict:
+    """Generic status check for any hook id under any Claude Code hook event."""
     status = {
         "installed": False,
         "settings_valid": False,
@@ -231,10 +240,10 @@ def _check_hook(hook_id: str, legacy_substr: str | None) -> dict:
         return status
     status["settings_valid"] = True
     hooks = data.get("hooks", {}) if isinstance(data, dict) else {}
-    session_hooks = hooks.get("SessionStart", []) if isinstance(hooks, dict) else []
-    if not isinstance(session_hooks, list):
+    event_hooks = hooks.get(event, []) if isinstance(hooks, dict) else []
+    if not isinstance(event_hooks, list):
         return status
-    for entry in session_hooks:
+    for entry in event_hooks:
         if not isinstance(entry, dict):
             continue
         for h in entry.get("hooks", []) or []:
@@ -249,8 +258,9 @@ def _install_hook(
     description: str,
     command: str,
     legacy_substr: str | None,
+    event: str = "SessionStart",
 ) -> tuple[bool, str]:
-    """Install a hook by id; deduplicates any existing matches first."""
+    """Install a hook under any Claude Code hook event; dedupes existing first."""
     data, err = _load_settings()
     if data is None:
         return False, err
@@ -259,13 +269,13 @@ def _install_hook(
         return False, "settings.json must be a JSON object"
 
     hooks = data.setdefault("hooks", {})
-    session_hooks = hooks.setdefault("SessionStart", [])
-    if not isinstance(session_hooks, list):
-        return False, "settings.json hooks.SessionStart must be a JSON array"
+    event_hooks = hooks.setdefault(event, [])
+    if not isinstance(event_hooks, list):
+        return False, f"settings.json hooks.{event} must be a JSON array"
 
     # Dedupe: remove any existing entries matching this hook id (incl. legacy).
-    session_hooks, removed = _filter_session_hooks(
-        session_hooks, hook_id, legacy_substr,
+    event_hooks, removed = _filter_session_hooks(
+        event_hooks, hook_id, legacy_substr,
     )
 
     # Append fresh entry.
@@ -280,8 +290,8 @@ def _install_hook(
             }
         ],
     }
-    session_hooks.append(new_entry)
-    hooks["SessionStart"] = session_hooks
+    event_hooks.append(new_entry)
+    hooks[event] = event_hooks
 
     ok, msg = _save_settings(data)
     if not ok:
@@ -290,8 +300,10 @@ def _install_hook(
     return True, f"Installed!{suffix} {msg}"
 
 
-def _uninstall_hook(hook_id: str, legacy_substr: str | None) -> tuple[bool, str]:
-    """Remove a hook by id (with legacy fallback)."""
+def _uninstall_hook(
+    hook_id: str, legacy_substr: str | None, event: str = "SessionStart",
+) -> tuple[bool, str]:
+    """Remove a hook by id from any Claude Code hook event."""
     data, err = _load_settings()
     if data is None:
         return False, err
@@ -302,21 +314,21 @@ def _uninstall_hook(hook_id: str, legacy_substr: str | None) -> tuple[bool, str]
     hooks = data.get("hooks", {})
     if not isinstance(hooks, dict):
         return False, "Hook not found (nothing to uninstall)"
-    session_hooks = hooks.get("SessionStart", [])
-    if not isinstance(session_hooks, list):
+    event_hooks = hooks.get(event, [])
+    if not isinstance(event_hooks, list):
         return False, "Hook not found (nothing to uninstall)"
 
     filtered, removed = _filter_session_hooks(
-        session_hooks, hook_id, legacy_substr,
+        event_hooks, hook_id, legacy_substr,
     )
 
     if removed == 0:
         return False, "Hook not found (nothing to uninstall)"
 
     if filtered:
-        hooks["SessionStart"] = filtered
+        hooks[event] = filtered
     else:
-        hooks.pop("SessionStart", None)
+        hooks.pop(event, None)
         if not hooks:
             data.pop("hooks", None)
 
@@ -365,3 +377,34 @@ def install_launcher_hook() -> tuple[bool, str]:
 def uninstall_launcher_hook() -> tuple[bool, str]:
     """Remove the launcher hook."""
     return _uninstall_hook(HOOK_ID_LAUNCH, _LAUNCH_LEGACY_SUBSTR)
+
+
+# ── Public API: Prompt hook (UserPromptSubmit) ──────────────────────
+# Same launcher command, different event. Lets existing sessions pick up
+# the auto-launch on next prompt without restarting Claude Code. Idempotent
+# at runtime — session_launcher exits in milliseconds when the GUI lock
+# is already held.
+
+def check_prompt_status() -> dict:
+    """Status of the UserPromptSubmit launcher hook."""
+    return _check_hook(
+        HOOK_ID_PROMPT, _LAUNCH_LEGACY_SUBSTR, event="UserPromptSubmit",
+    )
+
+
+def install_prompt_hook() -> tuple[bool, str]:
+    """Install the UserPromptSubmit launcher. Dedupes existing first."""
+    return _install_hook(
+        HOOK_ID_PROMPT,
+        HOOK_DESC_PROMPT,
+        _build_launcher_command(),
+        _LAUNCH_LEGACY_SUBSTR,
+        event="UserPromptSubmit",
+    )
+
+
+def uninstall_prompt_hook() -> tuple[bool, str]:
+    """Remove the UserPromptSubmit launcher hook."""
+    return _uninstall_hook(
+        HOOK_ID_PROMPT, _LAUNCH_LEGACY_SUBSTR, event="UserPromptSubmit",
+    )

@@ -2100,31 +2100,42 @@ class TokenSaverApp(ctk.CTk):
     # ── Auto-launch GUI on session ─────────────────────────────────────
 
     def _al_refresh_status(self) -> None:
-        """Update auto-launch card status indicator + button states."""
+        """Update auto-launch card status indicator + button states.
+
+        Reports combined state of BOTH SessionStart and UserPromptSubmit
+        launcher hooks.
+        """
         try:
             from . import auto_inject
-            status = auto_inject.check_launcher_status()
+            ss = auto_inject.check_launcher_status()
+            ups = auto_inject.check_prompt_status()
         except Exception as e:
             self._al_status_lbl.configure(text=f"Module error: {e}",
                                           text_color=C["err"])
             return
-        if not status["settings_exists"]:
+        if not ss["settings_exists"]:
             self._al_status_lbl.configure(text="settings.json missing",
                                           text_color=C["err"])
             self._al_install_btn.configure(state="disabled")
             self._al_uninstall_btn.configure(state="disabled")
-        elif not status["settings_valid"]:
+        elif not ss["settings_valid"]:
             self._al_status_lbl.configure(text="settings.json INVALID",
                                           text_color=C["err"])
             self._al_install_btn.configure(state="disabled")
             self._al_uninstall_btn.configure(state="disabled")
-        elif status["installed"]:
-            self._al_status_lbl.configure(text="Hook INSTALLED",
+        elif ss["installed"] and ups["installed"]:
+            self._al_status_lbl.configure(text="Hooks INSTALLED (new + existing sessions)",
                                           text_color=C["ok"])
             self._al_install_btn.configure(state="disabled")
             self._al_uninstall_btn.configure(state="normal")
+        elif ss["installed"] or ups["installed"]:
+            partial = "SessionStart only" if ss["installed"] else "UserPromptSubmit only"
+            self._al_status_lbl.configure(text=f"PARTIAL ({partial})",
+                                          text_color=C["warn"])
+            self._al_install_btn.configure(state="normal")
+            self._al_uninstall_btn.configure(state="normal")
         else:
-            self._al_status_lbl.configure(text="Hook not installed",
+            self._al_status_lbl.configure(text="Hooks not installed",
                                           text_color=C["fg3"])
             self._al_install_btn.configure(state="normal")
             self._al_uninstall_btn.configure(state="disabled")
@@ -2137,7 +2148,9 @@ class TokenSaverApp(ctk.CTk):
         self._refresh_autostart_status()
 
     def _al_toggle_main(self) -> None:
-        """Main toggle: persist pref, install/uninstall hook to match."""
+        """Main toggle: persist pref, install/uninstall BOTH hooks (SessionStart
+        + UserPromptSubmit) so existing AND new sessions pick up auto-launch.
+        """
         on = bool(self._set_auto_launch.get())
         self._prefs.auto_launch_gui_on_session = on
         if not self._prefs.save():
@@ -2146,23 +2159,27 @@ class TokenSaverApp(ctk.CTk):
         try:
             from . import auto_inject
             if on:
-                ok, msg = auto_inject.install_launcher_hook()
+                ok1, msg1 = auto_inject.install_launcher_hook()
+                ok2, msg2 = auto_inject.install_prompt_hook()
             else:
-                ok, msg = auto_inject.uninstall_launcher_hook()
+                ok1, msg1 = auto_inject.uninstall_launcher_hook()
+                ok2, msg2 = auto_inject.uninstall_prompt_hook()
         except Exception as e:
             self._toast(f"Module error: {e}", "error")
             self._al_refresh_status()
             return
-        if ok:
+        # On uninstall, "not found" is fine (idempotent) — treat as success.
+        if not on:
+            ok1 = ok1 or "not found" in msg1.lower()
+            ok2 = ok2 or "not found" in msg2.lower()
+        if ok1 and ok2:
             self._toast(f"Auto-launch: {'ON' if on else 'OFF'}",
                         "success" if on else "info")
-            self._log(f"Auto-launch hook: {msg}")
+            self._log(f"SessionStart hook: {msg1}")
+            self._log(f"UserPromptSubmit hook: {msg2}")
         else:
-            # If turning off and hook wasn't installed, that's fine.
-            if not on and "not found" in msg.lower():
-                self._toast("Auto-launch: OFF", "info")
-            else:
-                self._toast(f"Hook update failed: {msg}", "warning")
+            self._toast(f"Partial update — SessionStart: {msg1}; Prompt: {msg2}",
+                        "warning")
         self._al_refresh_status()
 
     def _al_toggle_minimized(self) -> None:
@@ -2175,42 +2192,48 @@ class TokenSaverApp(ctk.CTk):
         self._toast(f"Auto-launch mode: {mode}", "info")
 
     def _al_install(self) -> None:
-        """Manual install button — bypasses toggle (useful for repair)."""
+        """Manual install button — installs BOTH SessionStart + UserPromptSubmit."""
         try:
             from . import auto_inject
-            ok, msg = auto_inject.install_launcher_hook()
+            ok1, msg1 = auto_inject.install_launcher_hook()
+            ok2, msg2 = auto_inject.install_prompt_hook()
         except Exception as e:
             self._toast(f"Module error: {e}", "error")
             return
-        if ok:
-            self._toast("Launcher hook installed", "success")
-            self._log(f"Launcher hook: {msg}")
-            # Sync pref ON to reflect reality.
+        if ok1 and ok2:
+            self._toast("Launcher hooks installed", "success")
+            self._log(f"SessionStart: {msg1}")
+            self._log(f"UserPromptSubmit: {msg2}")
             if not self._prefs.auto_launch_gui_on_session:
                 self._prefs.auto_launch_gui_on_session = True
                 self._prefs.save()
                 self._set_auto_launch.select()
         else:
-            self._toast(f"Install failed: {msg}", "error")
+            self._toast(f"Install partial: SS={msg1}; UPS={msg2}", "error")
         self._al_refresh_status()
 
     def _al_uninstall(self) -> None:
-        """Manual uninstall button — bypasses toggle (useful for repair)."""
+        """Manual uninstall button — removes BOTH hooks."""
         try:
             from . import auto_inject
-            ok, msg = auto_inject.uninstall_launcher_hook()
+            ok1, msg1 = auto_inject.uninstall_launcher_hook()
+            ok2, msg2 = auto_inject.uninstall_prompt_hook()
         except Exception as e:
             self._toast(f"Module error: {e}", "error")
             return
-        if ok:
-            self._toast("Launcher hook removed", "info")
-            self._log(f"Launcher hook: {msg}")
+        # "not found" is fine on uninstall.
+        ok1 = ok1 or "not found" in msg1.lower()
+        ok2 = ok2 or "not found" in msg2.lower()
+        if ok1 and ok2:
+            self._toast("Launcher hooks removed", "info")
+            self._log(f"SessionStart: {msg1}")
+            self._log(f"UserPromptSubmit: {msg2}")
             if self._prefs.auto_launch_gui_on_session:
                 self._prefs.auto_launch_gui_on_session = False
                 self._prefs.save()
                 self._set_auto_launch.deselect()
         else:
-            self._toast(msg, "warning")
+            self._toast(f"Uninstall partial: SS={msg1}; UPS={msg2}", "warning")
         self._al_refresh_status()
 
     # ── Autostart shortcut (Windows Startup folder) ────────────────────

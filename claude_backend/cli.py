@@ -199,21 +199,35 @@ def _run_doctor() -> int:
         ))
         p = Prefs()
 
-    # 4. Launcher hook — compare against toggle state (critical if mismatch)
+    # 4. Launcher hooks — both SessionStart and UserPromptSubmit. Compare
+    #    against toggle state (critical if mismatched).
     launch = auto_inject.check_launcher_status()
+    prompt = auto_inject.check_prompt_status()
     expected = p.auto_launch_gui_on_session
     if expected:
         checks.append((
-            "Launcher hook (toggle ON, expect installed)",
+            "SessionStart launcher hook (toggle ON)",
             launch["installed"],
-            "" if launch["installed"] else "(toggle is ON but hook is missing -- click Install in Settings)",
+            "" if launch["installed"] else "(missing -- click Install in Settings)",
+            True,
+        ))
+        checks.append((
+            "UserPromptSubmit launcher hook (toggle ON)",
+            prompt["installed"],
+            "" if prompt["installed"] else "(missing -- existing sessions won't auto-launch)",
             True,
         ))
     else:
         checks.append((
-            "Launcher hook (toggle OFF, expect uninstalled)",
+            "SessionStart launcher hook (toggle OFF)",
             not launch["installed"],
-            "(toggle is OFF but hook is installed)" if launch["installed"] else "",
+            "(installed but toggle is OFF)" if launch["installed"] else "",
+            True,
+        ))
+        checks.append((
+            "UserPromptSubmit launcher hook (toggle OFF)",
+            not prompt["installed"],
+            "(installed but toggle is OFF)" if prompt["installed"] else "",
             True,
         ))
 
