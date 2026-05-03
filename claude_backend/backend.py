@@ -128,10 +128,16 @@ class ClaudeContextManager:
         logger.info("Bootstrap complete: %s", result.summary)
         return result
 
-    def prep(self, project_path: Path) -> GenerationResult:
+    def prep(self, project_path: Path, force: bool = False) -> GenerationResult:
         """Delta update: only regenerate outputs whose source files changed.
 
         Uses manifest SHA-256 hashes to skip unchanged generators.
+
+        Args:
+            project_path: project to prep
+            force: bypass the source-snapshot delta check and regenerate
+                everything. Useful after upgrading Token Saver (new
+                generators may produce files that didn't exist before).
         """
         manifest_path = project_path / ".claude" / "manifest.jsonl"
         manifest = Manifest(manifest_path)
@@ -140,10 +146,10 @@ class ClaudeContextManager:
         from .scanners.project import scan_project_fast_mtimes
         current_mtimes = scan_project_fast_mtimes(project_path, self.config)
 
-        # Compare against last prep's source snapshot
+        # Compare against last prep's source snapshot (skipped on force).
         last_snapshot_path = project_path / ".claude" / "source_snapshot.json"
         source_changed = True
-        if last_snapshot_path.is_file():
+        if not force and last_snapshot_path.is_file():
             import json
             try:
                 old = json.loads(last_snapshot_path.read_text(encoding="utf-8"))

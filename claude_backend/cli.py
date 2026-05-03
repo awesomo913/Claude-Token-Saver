@@ -105,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
         }, indent=2))
 
     elif args.command == "prep":
-        result = mgr.prep(args.project_path)
+        result = mgr.prep(args.project_path, force=getattr(args, "force", False))
         if not getattr(args, "quiet", False):
             print(json.dumps({
                 "command": "prep",
