@@ -213,6 +213,13 @@ class TokenSaverApp(ctk.CTk):
         if self._prefs.show_welcome_on_launch:
             self.after(400, self._open_welcome)
 
+        # Auto-load last project if pref is set and directory still exists
+        if self._prefs.last_project_path:
+            last = Path(self._prefs.last_project_path)
+            if last.is_dir():
+                # Defer slightly so UI is fully realized before scan triggers
+                self.after(200, lambda p=last: self._auto_load_project(p))
+
     # ── Skeleton ────────────────────────────────────────────────────────
     def _build_ui(self) -> None:
         # Sidebar
@@ -447,8 +454,30 @@ class TokenSaverApp(ctk.CTk):
         self._log(f"Loaded: {self._project_path.name}")
         self._toast(f"Project loaded: {self._project_path.name}", "success")
         self._update_token_display(); self._update_recent()
+        # Persist for auto-load on next launch
+        self._prefs.last_project_path = str(self._project_path)
+        self._prefs.save()
         # Run initial scan FIRST, then start auto-scan timer after it completes
         self._on_scan(start_auto_after=True)
+
+    def _auto_load_project(self, path: Path) -> None:
+        """Auto-load a remembered project on startup (silent — no toast)."""
+        try:
+            self._d_path.delete(0, "end")
+            self._d_path.insert(0, str(path))
+            self._project_path = path.resolve()
+            self._config = load_config(project_path=self._project_path)
+            self._mgr = ClaudeContextManager(self._config)
+            self._session_mem.set_project(self._project_path)
+            self._st_proj.configure(text=str(self._project_path))
+            self._log(f"Auto-loaded last project: {self._project_path.name}")
+            self._update_token_display()
+            self._update_recent()
+            # Defer scan so welcome dialog (if shown) doesn't compete for focus
+            self.after(800, lambda: self._on_scan(start_auto_after=True))
+        except Exception as e:
+            logger.exception("Auto-load failed")
+            self._log(f"Auto-load failed: {e}")
 
     def _on_bootstrap(self) -> None:
         if not self._project_path: self._toast("Load a project first", "warning"); return
@@ -2344,6 +2373,10 @@ class TokenSaverApp(ctk.CTk):
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    # Single-instance lock for the GUI window. Different name from tray so
+    # both can run side-by-side; second GUI launch exits immediately.
+    from .single_instance import acquire_or_exit
+    _gui_lock = acquire_or_exit("ClaudeTokenSaverGUI")  # noqa: F841
     TokenSaverApp().mainloop()
 
 if __name__ == "__main__":
