@@ -52,6 +52,9 @@ def main(argv: list[str] | None = None) -> int:
     # tray — system tray icon (passive reminder + quick actions)
     sub.add_parser("tray", help="Run system tray icon")
 
+    # doctor — audits installation health (settings.json, prefs, exe, hooks, shortcut)
+    sub.add_parser("doctor", help="Audit Token Saver installation health")
+
     args = parser.parse_args(argv)
 
     # Configure logging
@@ -66,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "tray":
         from .tray import run as _tray_run
         return _tray_run()
+
+    # doctor: same — no project, no config needed
+    if args.command == "doctor":
+        return _run_doctor()
 
     # Load config
     config = load_config(
@@ -134,6 +141,150 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {r}")
 
     return 0
+
+
+def _run_doctor() -> int:
+    """Audit Token Saver installation health.
+
+    Returns 0 if all CRITICAL checks pass, 1 otherwise. Informational
+    items (e.g. tray running, opt-in launcher hook) never trigger
+    failure exit code. Output is ASCII-safe (Windows cp1252 console).
+    """
+    from . import auto_inject
+    from .prefs import PREFS_PATH, Prefs
+    from .single_instance import is_locked
+
+    # Each check: (label, ok, note, critical)
+    checks: list[tuple[str, bool, str, bool]] = []
+
+    # 1. settings.json (critical)
+    prep = auto_inject.check_status()
+    if not prep["settings_exists"]:
+        checks.append(("settings.json exists", False,
+                       str(auto_inject.SETTINGS_PATH), True))
+    elif not prep["settings_valid"]:
+        checks.append(("settings.json valid JSON", False,
+                       prep["error"], True))
+    else:
+        checks.append(("settings.json exists + valid", True, "", True))
+
+    # 2. Prep hook (critical if user has it)
+    if prep["settings_valid"]:
+        checks.append((
+            "Auto-Inject prep hook installed",
+            prep["installed"],
+            "" if prep["installed"] else "(run 'install' from GUI to enable)",
+            True,
+        ))
+
+    # 3. Prefs file (critical)
+    if PREFS_PATH.is_file():
+        try:
+            p = Prefs.load()
+            checks.append((
+                "Prefs file readable",
+                True,
+                f"auto_launch={p.auto_launch_gui_on_session} minimized={p.auto_launch_minimized}",
+                True,
+            ))
+        except Exception as e:
+            checks.append(("Prefs file readable", False, str(e), True))
+            p = Prefs()  # for subsequent checks
+    else:
+        checks.append((
+            "Prefs file exists",
+            True,  # not a fail; will be created on first save
+            f"(absent; will create on first save)",
+            False,
+        ))
+        p = Prefs()
+
+    # 4. Launcher hook — compare against toggle state (critical if mismatch)
+    launch = auto_inject.check_launcher_status()
+    expected = p.auto_launch_gui_on_session
+    if expected:
+        checks.append((
+            "Launcher hook (toggle ON, expect installed)",
+            launch["installed"],
+            "" if launch["installed"] else "(toggle is ON but hook is missing -- click Install in Settings)",
+            True,
+        ))
+    else:
+        checks.append((
+            "Launcher hook (toggle OFF, expect uninstalled)",
+            not launch["installed"],
+            "(toggle is OFF but hook is installed)" if launch["installed"] else "",
+            True,
+        ))
+
+    # 5. Exe path (informational unless user expects it)
+    desktop_exe = Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+    checks.append((
+        "Desktop exe present",
+        desktop_exe.is_file(),
+        str(desktop_exe) if desktop_exe.is_file() else f"missing: {desktop_exe}",
+        False,  # informational -- user might run from source
+    ))
+
+    # 6. Autostart shortcut (informational)
+    if sys.platform == "win32":
+        import os
+        appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        lnk = (Path(appdata) / "Microsoft" / "Windows" / "Start Menu"
+               / "Programs" / "Startup" / "ClaudeTokenSaverTray.lnk")
+        checks.append((
+            "Autostart shortcut",
+            lnk.is_file(),
+            str(lnk) if lnk.is_file() else f"missing: {lnk}",
+            False,
+        ))
+
+    # 7. Tray running (informational only)
+    tray_running = is_locked("ClaudeTokenSaverTray")
+    checks.append((
+        "Tray currently running",
+        tray_running,
+        "" if tray_running else "(start via tray icon shortcut or 'python -m claude_backend tray')",
+        False,
+    ))
+
+    # 8. Backup count (informational)
+    try:
+        backups = list(auto_inject.SETTINGS_PATH.parent.glob("settings.json.backup-*"))
+        checks.append((
+            "settings.json backups (max 3 expected)",
+            len(backups) <= 3,
+            f"{len(backups)} backup(s)",
+            False,
+        ))
+    except OSError:
+        pass
+
+    # Print report (ASCII only -- avoids cp1252 console encoding errors)
+    print("\n=== Token Saver doctor ===\n")
+    critical_fails = 0
+    info_fails = 0
+    for label, ok, note, critical in checks:
+        if ok:
+            mark = "[OK]   "
+        elif critical:
+            mark = "[FAIL] "
+            critical_fails += 1
+        else:
+            mark = "[INFO] "
+            info_fails += 1
+        sep = " -- " if note else ""
+        print(f"  {mark}{label}{sep}{note}")
+
+    print()
+    if critical_fails == 0:
+        if info_fails:
+            print(f"All critical checks passed. ({info_fails} informational notice(s) above.)")
+        else:
+            print("All checks passed.")
+        return 0
+    print(f"{critical_fails} critical check(s) failed. See [FAIL] entries above.")
+    return 1
 
 
 def _print_analysis(analysis) -> None:

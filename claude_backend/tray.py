@@ -183,9 +183,21 @@ def build_menu() -> Menu:
     )
 
 
+_TRAY_INSTANCE_NAME = "ClaudeTokenSaverTray"
+
+
 def run() -> int:
-    """Start tray icon. Blocks until user picks Quit."""
+    """Start tray icon. Blocks until user picks Quit.
+
+    Single-instance enforced via Windows named mutex (with pidfile
+    fallback). If another tray is already running, this call exits 0
+    immediately — no duplicate icon.
+    """
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+
+    # Acquire single-instance lock. Held in `_lock` for process lifetime.
+    from .single_instance import acquire_or_exit
+    _lock = acquire_or_exit(_TRAY_INSTANCE_NAME)  # noqa: F841 (intentional)
 
     status = check_status()
     icon_img = _make_icon_image(installed=status["installed"])
@@ -197,15 +209,23 @@ def run() -> int:
         menu=build_menu(),
     )
 
-    # Refresh icon dot every 30s — picks up auto-inject install/uninstall
+    # Refresh icon dot every 30s — picks up auto-inject install/uninstall.
+    # Wrap each iteration so a single exception cannot kill the loop and
+    # freeze the icon's status indicator forever.
     def refresh_loop() -> None:
         while True:
-            time.sleep(30)
             try:
+                time.sleep(30)
                 s = check_status()
                 icon.icon = _make_icon_image(installed=s["installed"])
             except Exception as e:
-                logger.debug("Icon refresh failed: %s", e)
+                logger.warning("Icon refresh iteration failed: %s", e)
+                # Brief backoff before next attempt to avoid log spam if
+                # the underlying issue is persistent (e.g. corrupt JSON).
+                try:
+                    time.sleep(10)
+                except Exception:
+                    pass
 
     threading.Thread(target=refresh_loop, daemon=True).start()
 

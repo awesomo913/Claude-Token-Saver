@@ -4,13 +4,19 @@ Stores UI prefs that persist across launches. Lives at
 ~/.claude/token_saver_prefs.json. Best-effort: any read/write
 failure falls back to defaults so a corrupt file never bricks
 the GUI.
+
+Writes are atomic (temp file + os.replace) so a crash mid-save
+leaves the previous file intact instead of producing a partial
+JSON document. Eliminates the race window when GUI and tray
+might both be saving prefs concurrently.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass, field, fields
+import os
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -25,6 +31,8 @@ class Prefs:
     welcome_seen_count: int = 0
     last_project_path: str = ""
     show_tray_on_start: bool = False  # autostart hint, not enforced
+    auto_launch_gui_on_session: bool = False  # opt-in: open GUI on Claude session
+    auto_launch_minimized: bool = True  # if auto-launch on, prefer tray over window
 
     @classmethod
     def load(cls) -> "Prefs":
@@ -38,7 +46,7 @@ class Prefs:
             return cls()
         if not isinstance(data, dict):
             return cls()
-        # Filter to known fields only — forward-compat for new keys
+        # Filter to known fields only — forward-compat for new keys.
         valid = {f.name for f in fields(cls)}
         clean = {k: v for k, v in data.items() if k in valid}
         try:
@@ -48,13 +56,21 @@ class Prefs:
             return cls()
 
     def save(self) -> bool:
-        """Persist prefs. Returns True on success."""
+        """Persist prefs atomically. Returns True on success."""
         try:
             PREFS_PATH.parent.mkdir(parents=True, exist_ok=True)
-            PREFS_PATH.write_text(
-                json.dumps(asdict(self), indent=2),
-                encoding="utf-8",
-            )
+            text = json.dumps(asdict(self), indent=2)
+            tmp = PREFS_PATH.with_suffix(PREFS_PATH.suffix + ".tmp")
+            try:
+                tmp.write_text(text, encoding="utf-8")
+                os.replace(tmp, PREFS_PATH)
+            except OSError:
+                # Clean up temp file if rename failed.
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
             return True
         except OSError as e:
             logger.warning("prefs save failed: %s", e)

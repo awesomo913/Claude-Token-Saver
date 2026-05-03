@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import threading
 import time
 from dataclasses import asdict
@@ -282,6 +283,8 @@ class TokenSaverApp(ctk.CTk):
             self._rebuild_domain_tabs()
         elif name == "settings" and hasattr(self, "_ai_status_lbl"):
             self._ai_refresh_status()
+            if hasattr(self, "_al_status_lbl"):
+                self._al_refresh_status()
 
     def _open_welcome(self) -> None:
         """Open welcome dialog. Reuses existing window if already open."""
@@ -1637,6 +1640,97 @@ class TokenSaverApp(ctk.CTk):
         self._ai_tutorial_visible = False
 
         # ═══════════════════════════════════════════════════════════
+        #  AUTO-LAUNCH GUI ON SESSION (opt-in second hook)
+        # ═══════════════════════════════════════════════════════════
+        al_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                               border_width=2, border_color=C["purple"])
+        al_card.pack(fill="x", padx=20, pady=(0, 12))
+
+        al_hdr = ctk.CTkFrame(al_card, fg_color="transparent")
+        al_hdr.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(al_hdr, text="Auto-launch on Claude Code session",
+                     font=(F, 14, "bold"), text_color=C["purple"]).pack(side="left")
+        self._al_status_lbl = ctk.CTkLabel(
+            al_hdr, text="Checking...", font=(F, 11), text_color=C["fg3"],
+        )
+        self._al_status_lbl.pack(side="right")
+
+        ctk.CTkLabel(
+            al_card,
+            text="Optional. When ON, every Claude Code session will open Token "
+                 "Saver so you're reminded to grab targeted snippets for the "
+                 "biggest token savings (Layer 2). Independent from Auto-Inject.",
+            font=(F, 10), text_color=C["fg2"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 6), anchor="w")
+
+        self._set_auto_launch = ctk.CTkCheckBox(
+            al_card, text="Auto-launch Token Saver when a Claude Code session starts",
+            font=(F, 12), command=self._al_toggle_main,
+        )
+        self._set_auto_launch.pack(padx=20, pady=(4, 2), anchor="w")
+        if self._prefs.auto_launch_gui_on_session:
+            self._set_auto_launch.select()
+
+        self._set_auto_launch_min = ctk.CTkCheckBox(
+            al_card, text="    Open minimized to tray (off = full GUI window)",
+            font=(F, 11), command=self._al_toggle_minimized,
+        )
+        self._set_auto_launch_min.pack(padx=20, pady=(0, 6), anchor="w")
+        if self._prefs.auto_launch_minimized:
+            self._set_auto_launch_min.select()
+
+        al_btns = ctk.CTkFrame(al_card, fg_color="transparent")
+        al_btns.pack(fill="x", padx=16, pady=(2, 12))
+        self._al_install_btn = ctk.CTkButton(
+            al_btns, text="Install hook", width=130, height=30,
+            font=(F, 11, "bold"), fg_color=C["ok"],
+            command=self._al_install,
+        )
+        self._al_install_btn.pack(side="left", padx=(0, 8))
+        self._al_uninstall_btn = ctk.CTkButton(
+            al_btns, text="Uninstall hook", width=120, height=30,
+            font=(F, 11), fg_color=C["err"],
+            command=self._al_uninstall,
+        )
+        self._al_uninstall_btn.pack(side="left")
+
+        # ═══════════════════════════════════════════════════════════
+        #  AUTOSTART SHORTCUT REPAIR
+        # ═══════════════════════════════════════════════════════════
+        as_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                               border_width=1, border_color=C["border"])
+        as_card.pack(fill="x", padx=20, pady=(0, 12))
+
+        as_hdr = ctk.CTkFrame(as_card, fg_color="transparent")
+        as_hdr.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(as_hdr, text="Windows autostart shortcut", font=(F, 14, "bold"),
+                     text_color=C["fg"]).pack(side="left")
+        self._as_status_lbl = ctk.CTkLabel(
+            as_hdr, text="Checking...", font=(F, 11), text_color=C["fg3"],
+        )
+        self._as_status_lbl.pack(side="right")
+
+        ctk.CTkLabel(
+            as_card,
+            text="Token Saver tray launches when you log into Windows. Click "
+                 "Repair if the shortcut is missing or pointing at a stale exe path.",
+            font=(F, 10), text_color=C["fg3"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 6), anchor="w")
+
+        as_btns = ctk.CTkFrame(as_card, fg_color="transparent")
+        as_btns.pack(fill="x", padx=16, pady=(0, 12))
+        ctk.CTkButton(
+            as_btns, text="Repair / re-create shortcut", width=220, height=30,
+            font=(F, 11, "bold"), fg_color=C["accent"],
+            command=self._repair_autostart,
+        ).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            as_btns, text="Remove shortcut", width=140, height=30,
+            font=(F, 11), fg_color=C["bg2"],
+            command=self._remove_autostart,
+        ).pack(side="left")
+
+        # ═══════════════════════════════════════════════════════════
         #  ONBOARDING / WELCOME PANEL
         # ═══════════════════════════════════════════════════════════
         wel_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
@@ -1973,6 +2067,232 @@ class TokenSaverApp(ctk.CTk):
             self._toast(f"Welcome on launch: {state}", "info")
         else:
             self._toast("Failed to save preference", "warning")
+
+    # ── Auto-launch GUI on session ─────────────────────────────────────
+
+    def _al_refresh_status(self) -> None:
+        """Update auto-launch card status indicator + button states."""
+        try:
+            from . import auto_inject
+            status = auto_inject.check_launcher_status()
+        except Exception as e:
+            self._al_status_lbl.configure(text=f"Module error: {e}",
+                                          text_color=C["err"])
+            return
+        if not status["settings_exists"]:
+            self._al_status_lbl.configure(text="settings.json missing",
+                                          text_color=C["err"])
+            self._al_install_btn.configure(state="disabled")
+            self._al_uninstall_btn.configure(state="disabled")
+        elif not status["settings_valid"]:
+            self._al_status_lbl.configure(text="settings.json INVALID",
+                                          text_color=C["err"])
+            self._al_install_btn.configure(state="disabled")
+            self._al_uninstall_btn.configure(state="disabled")
+        elif status["installed"]:
+            self._al_status_lbl.configure(text="Hook INSTALLED",
+                                          text_color=C["ok"])
+            self._al_install_btn.configure(state="disabled")
+            self._al_uninstall_btn.configure(state="normal")
+        else:
+            self._al_status_lbl.configure(text="Hook not installed",
+                                          text_color=C["fg3"])
+            self._al_install_btn.configure(state="normal")
+            self._al_uninstall_btn.configure(state="disabled")
+        # Sub-toggle only meaningful when main toggle is on.
+        if self._prefs.auto_launch_gui_on_session:
+            self._set_auto_launch_min.configure(state="normal")
+        else:
+            self._set_auto_launch_min.configure(state="disabled")
+        # Repair-shortcut card too.
+        self._refresh_autostart_status()
+
+    def _al_toggle_main(self) -> None:
+        """Main toggle: persist pref, install/uninstall hook to match."""
+        on = bool(self._set_auto_launch.get())
+        self._prefs.auto_launch_gui_on_session = on
+        if not self._prefs.save():
+            self._toast("Failed to save preference", "warning")
+            return
+        try:
+            from . import auto_inject
+            if on:
+                ok, msg = auto_inject.install_launcher_hook()
+            else:
+                ok, msg = auto_inject.uninstall_launcher_hook()
+        except Exception as e:
+            self._toast(f"Module error: {e}", "error")
+            self._al_refresh_status()
+            return
+        if ok:
+            self._toast(f"Auto-launch: {'ON' if on else 'OFF'}",
+                        "success" if on else "info")
+            self._log(f"Auto-launch hook: {msg}")
+        else:
+            # If turning off and hook wasn't installed, that's fine.
+            if not on and "not found" in msg.lower():
+                self._toast("Auto-launch: OFF", "info")
+            else:
+                self._toast(f"Hook update failed: {msg}", "warning")
+        self._al_refresh_status()
+
+    def _al_toggle_minimized(self) -> None:
+        """Sub-toggle: persist 'open minimized to tray' preference."""
+        self._prefs.auto_launch_minimized = bool(self._set_auto_launch_min.get())
+        if not self._prefs.save():
+            self._toast("Failed to save preference", "warning")
+            return
+        mode = "tray" if self._prefs.auto_launch_minimized else "full window"
+        self._toast(f"Auto-launch mode: {mode}", "info")
+
+    def _al_install(self) -> None:
+        """Manual install button — bypasses toggle (useful for repair)."""
+        try:
+            from . import auto_inject
+            ok, msg = auto_inject.install_launcher_hook()
+        except Exception as e:
+            self._toast(f"Module error: {e}", "error")
+            return
+        if ok:
+            self._toast("Launcher hook installed", "success")
+            self._log(f"Launcher hook: {msg}")
+            # Sync pref ON to reflect reality.
+            if not self._prefs.auto_launch_gui_on_session:
+                self._prefs.auto_launch_gui_on_session = True
+                self._prefs.save()
+                self._set_auto_launch.select()
+        else:
+            self._toast(f"Install failed: {msg}", "error")
+        self._al_refresh_status()
+
+    def _al_uninstall(self) -> None:
+        """Manual uninstall button — bypasses toggle (useful for repair)."""
+        try:
+            from . import auto_inject
+            ok, msg = auto_inject.uninstall_launcher_hook()
+        except Exception as e:
+            self._toast(f"Module error: {e}", "error")
+            return
+        if ok:
+            self._toast("Launcher hook removed", "info")
+            self._log(f"Launcher hook: {msg}")
+            if self._prefs.auto_launch_gui_on_session:
+                self._prefs.auto_launch_gui_on_session = False
+                self._prefs.save()
+                self._set_auto_launch.deselect()
+        else:
+            self._toast(msg, "warning")
+        self._al_refresh_status()
+
+    # ── Autostart shortcut (Windows Startup folder) ────────────────────
+
+    def _autostart_shortcut_path(self) -> Path:
+        """Resolve %APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\..."""
+        import os
+        appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        return (
+            Path(appdata) / "Microsoft" / "Windows" / "Start Menu"
+            / "Programs" / "Startup" / "ClaudeTokenSaverTray.lnk"
+        )
+
+    def _autostart_target_path(self) -> Path:
+        """Where the deployed exe is expected. Used as the shortcut target."""
+        return Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+
+    def _refresh_autostart_status(self) -> None:
+        if not hasattr(self, "_as_status_lbl"):
+            return
+        if not sys.platform == "win32":
+            self._as_status_lbl.configure(text="Windows only",
+                                          text_color=C["fg3"])
+            return
+        lnk = self._autostart_shortcut_path()
+        target = self._autostart_target_path()
+        if not lnk.is_file():
+            self._as_status_lbl.configure(text="Shortcut MISSING",
+                                          text_color=C["warn"])
+        elif not target.is_file():
+            self._as_status_lbl.configure(text="Target exe MISSING",
+                                          text_color=C["err"])
+        else:
+            self._as_status_lbl.configure(text="OK",
+                                          text_color=C["ok"])
+
+    def _repair_autostart(self) -> None:
+        """Create or recreate the Startup shortcut pointing at current exe."""
+        if sys.platform != "win32":
+            self._toast("Autostart shortcut is Windows-only", "warning")
+            return
+        target = self._autostart_target_path()
+        if not target.is_file():
+            self._toast(f"Target exe not found: {target}", "error")
+            return
+        lnk_path = self._autostart_shortcut_path()
+        try:
+            lnk_path.parent.mkdir(parents=True, exist_ok=True)
+            # Use COM via WScript.Shell (same approach as PowerShell).
+            import pythoncom  # noqa: F401  # prerequisite for Dispatch on some setups
+        except ImportError:
+            # pywin32 not installed; fall back to PowerShell.
+            self._repair_autostart_via_powershell(lnk_path, target)
+            return
+        try:
+            from win32com.client import Dispatch  # type: ignore
+            shell = Dispatch("WScript.Shell")
+            sc = shell.CreateShortCut(str(lnk_path))
+            sc.TargetPath = str(target)
+            sc.Arguments = "--tray"
+            sc.WorkingDirectory = str(target.parent)
+            sc.WindowStyle = 7  # minimized
+            sc.Description = "Claude Token Saver — system tray (auto-start)"
+            sc.IconLocation = f"{target},0"
+            sc.save()
+            self._toast("Autostart shortcut repaired", "success")
+        except Exception as e:
+            self._log(f"COM shortcut creation failed: {e}; falling back to PowerShell")
+            self._repair_autostart_via_powershell(lnk_path, target)
+        self._refresh_autostart_status()
+
+    def _repair_autostart_via_powershell(self, lnk_path: Path, target: Path) -> None:
+        """PowerShell fallback for shortcut creation when pywin32 unavailable."""
+        import subprocess
+        ps_script = (
+            f"$WshShell = New-Object -ComObject WScript.Shell;"
+            f"$sc = $WshShell.CreateShortcut('{lnk_path}');"
+            f"$sc.TargetPath = '{target}';"
+            f"$sc.Arguments = '--tray';"
+            f"$sc.WorkingDirectory = '{target.parent}';"
+            f"$sc.WindowStyle = 7;"
+            f"$sc.Description = 'Claude Token Saver tray (auto-start)';"
+            f"$sc.IconLocation = '{target},0';"
+            f"$sc.Save();"
+        )
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+                capture_output=True, text=True, timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            )
+            if result.returncode == 0 and lnk_path.is_file():
+                self._toast("Autostart shortcut repaired", "success")
+            else:
+                self._toast(f"Repair failed: {result.stderr or 'unknown error'}", "error")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            self._toast(f"Repair failed: {e}", "error")
+
+    def _remove_autostart(self) -> None:
+        """Delete the Startup shortcut. Tray + auto-inject hook unaffected."""
+        lnk_path = self._autostart_shortcut_path()
+        if not lnk_path.is_file():
+            self._toast("Shortcut already absent", "info")
+            self._refresh_autostart_status()
+            return
+        try:
+            lnk_path.unlink()
+            self._toast("Autostart shortcut removed", "info")
+        except OSError as e:
+            self._toast(f"Remove failed: {e}", "error")
+        self._refresh_autostart_status()
 
     def _ai_show_tutorial(self) -> None:
         """Toggle the Auto-Inject tutorial text."""

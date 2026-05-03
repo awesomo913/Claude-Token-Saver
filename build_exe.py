@@ -57,6 +57,8 @@ cmd = [
     "--hidden-import", "claude_backend.tray",
     "--hidden-import", "claude_backend.welcome",
     "--hidden-import", "claude_backend.prefs",
+    "--hidden-import", "claude_backend.single_instance",
+    "--hidden-import", "claude_backend.session_launcher",
     "--hidden-import", "pystray",
     "--hidden-import", "pystray._win32",
     "--collect-submodules", "customtkinter",

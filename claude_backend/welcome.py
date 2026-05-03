@@ -50,11 +50,18 @@ PERMISSIONS = [
     ("Reads/writes files in YOUR project folder",
      "Generates CLAUDE.md, .claude/snippets/*, and reads source files to scan."),
     ("Reads/writes ~/.claude/settings.json",
-     "Only when you click Install Auto-Inject. Always backed up first with timestamp."),
+     "Only when you click Install Auto-Inject or toggle 'Auto-launch on session'. "
+     "Each install is a separate hook entry, removable independently. Always "
+     "backed up first with timestamp; only the newest 3 backups are kept."),
     ("Reads/writes ~/.claude/projects/<slug>/memory/",
      "Memory files Claude Code auto-loads per project. Standard Claude Code path."),
     ("Reads/writes ~/.claude/token_saver_prefs.json",
-     "Stores your GUI preferences (this welcome toggle, last project, etc)."),
+     "Stores your GUI preferences (welcome toggle, auto-launch toggle, etc)."),
+    ("Reads/writes ~/.claude/token_saver_tray.pid",
+     "Single-instance lock file for the tray icon. Prevents duplicate icons."),
+    ("Reads/writes ~/.claude/token_saver_crash.log",
+     "Created only if the exe crashes — records traceback for diagnosis. "
+     "Otherwise this file does not exist."),
     ("Network: localhost:11434 only (Ollama)",
      "Optional. Skipped if Ollama not running. Never connects to anything else "
      "unless you click Pull Model or use the GitHub scanner."),
@@ -67,7 +74,10 @@ QUICK_START = [
     "2. Tool scans your code, generates CLAUDE.md and memory files.",
     "3. Settings tab → click Install Auto-Inject (one-time, takes 1 second).",
     "4. From now on, every Claude Code session auto-refreshes context.",
-    "5. For specific questions, open Context Builder, search snippets, click Grab, "
+    "5. (Optional) Settings tab → 'Auto-launch on Claude Code session' toggle. "
+    "When ON, every Claude Code session opens Token Saver so you're reminded "
+    "to grab targeted snippets. Defaults to opening minimized to tray.",
+    "6. For specific questions, open Context Builder, search snippets, click Grab, "
     "Copy, paste before your Claude Code prompt.",
 ]
 
