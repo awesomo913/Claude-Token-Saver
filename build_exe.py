@@ -54,7 +54,13 @@ cmd = [
     "--hidden-import", "claude_backend.generators.snippet_library",
     "--hidden-import", "claude_backend.tokenizer",
     "--hidden-import", "claude_backend.search",
+    "--hidden-import", "claude_backend.tray",
+    "--hidden-import", "claude_backend.welcome",
+    "--hidden-import", "claude_backend.prefs",
+    "--hidden-import", "pystray",
+    "--hidden-import", "pystray._win32",
     "--collect-submodules", "customtkinter",
+    "--collect-submodules", "pystray",
     "launch_token_saver.py",
 ]
 
