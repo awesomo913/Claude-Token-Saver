@@ -274,6 +274,53 @@ def _run_doctor() -> int:
     except OSError:
         pass
 
+    # 9. HTTP backend (informational; critical iff anyone needs it)
+    try:
+        from .http_server import is_port_free
+        port_free = is_port_free(p.http_port)
+        running = not port_free
+        checks.append((
+            f"HTTP backend on 127.0.0.1:{p.http_port}",
+            running,
+            "" if running else "(tray boots it; restart tray to recover)",
+            False,
+        ))
+    except Exception as e:
+        checks.append(("HTTP backend reachability", False, str(e), False))
+
+    # 10. Overlay (critical iff toggle on but process missing)
+    try:
+        overlay_running = is_locked("ClaudeTokenSaverOverlay")
+        if p.show_overlay:
+            checks.append((
+                "Overlay process (toggle ON)",
+                overlay_running,
+                "" if overlay_running else "(toggle ON but no process; restart tray)",
+                True,
+            ))
+        else:
+            checks.append((
+                "Overlay process (toggle OFF)",
+                not overlay_running,
+                "(running but toggle OFF)" if overlay_running else "",
+                False,
+            ))
+    except Exception as e:
+        checks.append(("Overlay process check", False, str(e), False))
+
+    # 11. Hotkey daemon (informational; in-process state, can't probe from here)
+    if p.enable_hotkey:
+        checks.append((
+            "Global hotkey (toggle ON)",
+            True,
+            f"bound to {p.hotkey_combo} (verify by pressing it)",
+            False,
+        ))
+    else:
+        checks.append((
+            "Global hotkey (toggle OFF)", True, "", False,
+        ))
+
     # Print report (ASCII only -- avoids cp1252 console encoding errors)
     print("\n=== Token Saver doctor ===\n")
     critical_fails = 0

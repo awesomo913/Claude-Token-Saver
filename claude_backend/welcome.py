@@ -62,6 +62,24 @@ PERMISSIONS = [
     ("Reads/writes ~/.claude/token_saver_crash.log",
      "Created only if the exe crashes — records traceback for diagnosis. "
      "Otherwise this file does not exist."),
+    ("Reads/writes ~/.claude/token_saver_pending.json",
+     "IPC file used by the HTTP backend to hand /improve requests to the "
+     "GUI process. Polled every 1s by the GUI; deleted after consumption."),
+    ("Listens on 127.0.0.1:7321 (HTTP backend)",
+     "Localhost-only API for the browser extension, the floating overlay, "
+     "and the global hotkey. Never binds to public network interfaces. "
+     "CORS strict to chrome-extension://* origins."),
+    ("Sends Ctrl+A + Ctrl+C to the focused window",
+     "Only when you click the floating overlay button or press the global "
+     "hotkey. Used to capture your typed prompt from Claude. Original "
+     "clipboard is restored after capture."),
+    ("Global keyboard hook (Ctrl+Shift+I default)",
+     "Only when you enable the hotkey toggle. Uses the `keyboard` library; "
+     "may require admin on some Windows configs."),
+    ("Browser extension page injection (claude.ai)",
+     "Only if you install the bundled Chrome extension. Injects an Improve "
+     "button next to the textarea. Reads the textarea via DOM, never the "
+     "rest of the page."),
     ("Network: localhost:11434 only (Ollama)",
      "Optional. Skipped if Ollama not running. Never connects to anything else "
      "unless you click Pull Model or use the GitHub scanner."),
@@ -78,7 +96,12 @@ QUICK_START = [
     "When ON, every Claude Code session opens Token Saver so you're reminded "
     "to grab targeted snippets. Installs TWO hooks: SessionStart (new sessions) "
     "and UserPromptSubmit (existing sessions on next prompt). Both idempotent.",
-    "6. For specific questions, open Context Builder, search snippets, click Grab, "
+    "6. (Optional) For real-time Improve workflow: install the browser "
+    "extension (Settings → Open extension folder → load unpacked in chrome://extensions), "
+    "OR enable the floating overlay button (Claude Desktop), OR enable the "
+    "global hotkey (terminal Claude Code). All three call the same Smart "
+    "Mode pipeline and pre-populate this GUI's Builder tab on click.",
+    "7. For specific questions, open Context Builder, search snippets, click Grab, "
     "Copy, paste before your Claude Code prompt.",
 ]
 

@@ -102,6 +102,27 @@ def _python_exe() -> str:
     return sys.executable
 
 
+def _spawn_overlay_subprocess() -> None:
+    """Spawn the overlay as a detached subprocess.
+
+    Uses the deployed exe when available (frozen mode); falls back to
+    `python -m claude_backend.overlay` for dev runs. Single-instance
+    lock inside the overlay module guarantees no duplicate windows.
+    """
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+
+    exe_path = Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+    if exe_path.is_file():
+        # Pass --overlay flag so the launcher routes to overlay mode.
+        args = [str(exe_path), "--overlay"]
+    else:
+        args = [_python_exe(), "-m", "claude_backend.overlay"]
+
+    subprocess.Popen(args, creationflags=creationflags, close_fds=True)
+
+
 def _launch_gui(icon: Optional["pystray.Icon"] = None) -> None:
     """Open Token Saver GUI in detached subprocess."""
     creationflags = 0
@@ -192,12 +213,54 @@ def run() -> int:
     Single-instance enforced via Windows named mutex (with pidfile
     fallback). If another tray is already running, this call exits 0
     immediately — no duplicate icon.
+
+    Also boots the localhost HTTP server (Phase 0 backend) in a daemon
+    thread so the browser extension / overlay / hotkey can talk to us.
     """
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
     # Acquire single-instance lock. Held in `_lock` for process lifetime.
     from .single_instance import acquire_or_exit
     _lock = acquire_or_exit(_TRAY_INSTANCE_NAME)  # noqa: F841 (intentional)
+
+    # Boot HTTP server. Best-effort: failure logs but doesn't block tray.
+    try:
+        from . import http_server
+        from .prefs import Prefs
+        prefs = Prefs.load()
+        if http_server.start_server(prefs.http_port):
+            logger.info("HTTP server started on 127.0.0.1:%d", prefs.http_port)
+        else:
+            logger.warning(
+                "HTTP server failed to start on port %d (already in use?). "
+                "Browser extension and overlay button will not work.",
+                prefs.http_port,
+            )
+    except Exception as e:
+        logger.warning("HTTP server boot failed: %s", e)
+        prefs = None  # type: ignore[assignment]
+
+    # Spawn overlay as detached subprocess if pref is on. Overlay has its
+    # own Tk root + single-instance lock, so it survives independently.
+    if prefs is not None and prefs.show_overlay:
+        try:
+            _spawn_overlay_subprocess()
+        except Exception as e:
+            logger.warning("Overlay spawn failed: %s", e)
+
+    # Register global hotkey if pref is on. keyboard library installs an
+    # OS-level hook in the current process — runs in tray process.
+    if prefs is not None and prefs.enable_hotkey:
+        try:
+            from . import hotkey
+            if hotkey.start(prefs.hotkey_combo):
+                logger.info("Global hotkey '%s' active", prefs.hotkey_combo)
+            else:
+                logger.warning(
+                    "Global hotkey registration failed; check admin rights",
+                )
+        except Exception as e:
+            logger.warning("Hotkey boot failed: %s", e)
 
     status = check_status()
     icon_img = _make_icon_image(installed=status["installed"])

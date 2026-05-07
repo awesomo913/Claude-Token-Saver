@@ -29,6 +29,11 @@ def _is_tray_mode() -> bool:
     return any(a in ("--tray", "-t") for a in sys.argv[1:])
 
 
+def _is_overlay_mode() -> bool:
+    """Overlay mode if --overlay anywhere in argv."""
+    return "--overlay" in sys.argv[1:]
+
+
 def _log_crash(exc: BaseException) -> Path | None:
     """Write traceback to ~/.claude/token_saver_crash.log. Best-effort.
 
@@ -50,6 +55,9 @@ def _log_crash(exc: BaseException) -> Path | None:
 
 
 def _main() -> int:
+    if _is_overlay_mode():
+        from claude_backend.overlay import main as overlay_main
+        return int(overlay_main() or 0)
     if _is_tray_mode():
         from claude_backend.tray import run as tray_run
         return int(tray_run() or 0)

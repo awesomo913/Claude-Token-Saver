@@ -220,6 +220,10 @@ class TokenSaverApp(ctk.CTk):
                 # Defer slightly so UI is fully realized before scan triggers
                 self.after(200, lambda p=last: self._auto_load_project(p))
 
+        # Watch the HTTP server's IPC pending file for incoming /improve calls.
+        # When a payload appears, populate Builder and raise the window.
+        self.after(1000, self._poll_pending_file)
+
     # ── Skeleton ────────────────────────────────────────────────────────
     def _build_ui(self) -> None:
         # Sidebar
@@ -292,6 +296,8 @@ class TokenSaverApp(ctk.CTk):
             self._ai_refresh_status()
             if hasattr(self, "_al_status_lbl"):
                 self._al_refresh_status()
+            if hasattr(self, "_bk_status_lbl"):
+                self._refresh_backend_statuses()
 
     def _open_welcome(self) -> None:
         """Open welcome dialog. Reuses existing window if already open."""
@@ -478,6 +484,83 @@ class TokenSaverApp(ctk.CTk):
         except Exception as e:
             logger.exception("Auto-load failed")
             self._log(f"Auto-load failed: {e}")
+
+    # ── HTTP IPC: poll pending file from http_server ──────────────────
+
+    def _poll_pending_file(self) -> None:
+        """Check for HTTP-driven improve requests every second.
+
+        The HTTP server (running in the tray process) writes a JSON
+        payload to ~/.claude/token_saver_pending.json when a browser
+        extension / overlay / hotkey fires /improve. We pick it up here,
+        populate the Builder, and raise the window.
+        """
+        try:
+            from .http_server import PENDING_PATH
+            if PENDING_PATH.is_file():
+                self._handle_pending(PENDING_PATH)
+        except Exception as e:
+            logger.debug("Pending poll error: %s", e)
+        finally:
+            # Re-arm; 1s cadence is fine — file appearance is rare.
+            self.after(1000, self._poll_pending_file)
+
+    def _handle_pending(self, path: Path) -> None:
+        """Load a pending improve-request payload into the Builder tab."""
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Pending file unreadable, deleting: %s", e)
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            return
+
+        # Always delete the pending file after reading — even if processing
+        # fails — so we don't loop on a corrupt payload.
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+        if payload.get("kind") != "improve_request":
+            return
+
+        original = str(payload.get("original_prompt", "")).strip()
+        project_path = str(payload.get("project_path", "")).strip()
+        if not original:
+            return
+
+        # Switch to the picked project if different (and dir exists).
+        if project_path and (not self._project_path or
+                             str(self._project_path) != project_path):
+            pp = Path(project_path)
+            if pp.is_dir():
+                self._auto_load_project(pp)
+
+        # Switch to Builder view, populate request box, refresh preview.
+        self._show_view("builder")
+        try:
+            self._request_box.delete("1.0", "end")
+            self._request_box.insert("1.0", original)
+            self._update_preview()
+        except Exception as e:
+            logger.exception("Pending populate failed: %s", e)
+
+        # Raise window to front so user sees Copy Prompt button.
+        try:
+            self.deiconify()
+            self.lift()
+            self.focus_force()
+            # Win32 hint to push above other windows
+            self.attributes("-topmost", True)
+            self.after(200, lambda: self.attributes("-topmost", False))
+        except Exception as e:
+            logger.debug("Window raise failed: %s", e)
+
+        self._toast("Loaded prompt from external trigger", "success")
+        self._log(f"HTTP IPC: loaded prompt ({len(original)} chars)")
 
     def _on_bootstrap(self) -> None:
         if not self._project_path: self._toast("Load a project first", "warning"); return
@@ -1760,6 +1843,129 @@ class TokenSaverApp(ctk.CTk):
         ).pack(side="left")
 
         # ═══════════════════════════════════════════════════════════
+        #  HTTP BACKEND (Phase 0) — status only, no toggles
+        # ═══════════════════════════════════════════════════════════
+        bk_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                               border_width=1, border_color=C["border"])
+        bk_card.pack(fill="x", padx=20, pady=(0, 12))
+        bh = ctk.CTkFrame(bk_card, fg_color="transparent")
+        bh.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(bh, text="HTTP backend (Improve & Copy server)",
+                     font=(F, 14, "bold"), text_color=C["fg"]).pack(side="left")
+        self._bk_status_lbl = ctk.CTkLabel(bh, text="Checking...",
+                                           font=(F, 11), text_color=C["fg3"])
+        self._bk_status_lbl.pack(side="right")
+        ctk.CTkLabel(
+            bk_card,
+            text="Localhost-only HTTP server (127.0.0.1) used by the browser "
+                 "extension, the floating overlay, and the global hotkey to "
+                 "send your typed prompts to Token Saver. Boots automatically "
+                 "with the tray. Edit the port in token_saver_prefs.json.",
+            font=(F, 10), text_color=C["fg3"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 12), anchor="w")
+
+        # ═══════════════════════════════════════════════════════════
+        #  BROWSER EXTENSION (Phase 1)
+        # ═══════════════════════════════════════════════════════════
+        ext_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                                border_width=1, border_color=C["border"])
+        ext_card.pack(fill="x", padx=20, pady=(0, 12))
+        eh = ctk.CTkFrame(ext_card, fg_color="transparent")
+        eh.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(eh, text="Browser extension (claude.ai)",
+                     font=(F, 14, "bold"), text_color=C["fg"]).pack(side="left")
+
+        ctk.CTkLabel(
+            ext_card,
+            text="Adds an Improve button next to the prompt input on claude.ai. "
+                 "Click to send your typed text through Token Saver's Smart Mode "
+                 "and pre-populate the Builder tab here.",
+            font=(F, 10), text_color=C["fg2"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 6), anchor="w")
+        ctk.CTkLabel(
+            ext_card,
+            text="Install: chrome://extensions/ -> Developer mode ON -> Load unpacked "
+                 "-> pick the extensions/claude_token_saver folder.",
+            font=(F, 10), text_color=C["fg3"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 8), anchor="w")
+        ext_btns = ctk.CTkFrame(ext_card, fg_color="transparent")
+        ext_btns.pack(fill="x", padx=16, pady=(0, 12))
+        ctk.CTkButton(
+            ext_btns, text="Open extension folder", width=180, height=30,
+            font=(F, 11, "bold"), fg_color=C["accent"],
+            command=self._open_extension_folder,
+        ).pack(side="left", padx=(0, 8))
+
+        # ═══════════════════════════════════════════════════════════
+        #  FLOATING OVERLAY BUTTON (Phase 2)
+        # ═══════════════════════════════════════════════════════════
+        ov_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                               border_width=2, border_color=C["purple"])
+        ov_card.pack(fill="x", padx=20, pady=(0, 12))
+        oh2 = ctk.CTkFrame(ov_card, fg_color="transparent")
+        oh2.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(oh2, text="Floating overlay button (Claude Desktop)",
+                     font=(F, 14, "bold"), text_color=C["purple"]).pack(side="left")
+        self._ov_status_lbl = ctk.CTkLabel(oh2, text="Checking...",
+                                           font=(F, 11), text_color=C["fg3"])
+        self._ov_status_lbl.pack(side="right")
+        ctk.CTkLabel(
+            ov_card,
+            text="Always-on-top pill button. Click in any app focused on Claude's "
+                 "input box to capture (Ctrl+A+Ctrl+C macro), pick a project, and "
+                 "pipe through Smart Mode. Drag the pill to position; double-click to lock.",
+            font=(F, 10), text_color=C["fg2"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 6), anchor="w")
+        self._set_overlay = ctk.CTkCheckBox(
+            ov_card, text="Show floating overlay button (subprocess survives GUI close)",
+            font=(F, 12), command=self._toggle_overlay,
+        )
+        self._set_overlay.pack(padx=20, pady=(2, 12), anchor="w")
+        if self._prefs.show_overlay:
+            self._set_overlay.select()
+
+        # ═══════════════════════════════════════════════════════════
+        #  GLOBAL HOTKEY (Phase 3)
+        # ═══════════════════════════════════════════════════════════
+        hk_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
+                               border_width=1, border_color=C["border"])
+        hk_card.pack(fill="x", padx=20, pady=(0, 12))
+        hh = ctk.CTkFrame(hk_card, fg_color="transparent")
+        hh.pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(hh, text="Global hotkey (any window with Claude focused)",
+                     font=(F, 14, "bold"), text_color=C["fg"]).pack(side="left")
+        self._hk_status_lbl = ctk.CTkLabel(hh, text="Checking...",
+                                           font=(F, 11), text_color=C["fg3"])
+        self._hk_status_lbl.pack(side="right")
+        ctk.CTkLabel(
+            hk_card,
+            text="Press a system-wide keyboard shortcut to fire the same pipeline "
+                 "without a visible button. Useful in Claude Code terminals where a "
+                 "Win32 overlay can't attach. Uses last-loaded project as context.",
+            font=(F, 10), text_color=C["fg2"], wraplength=720, justify="left",
+        ).pack(padx=16, pady=(0, 6), anchor="w")
+        hk_row = ctk.CTkFrame(hk_card, fg_color="transparent")
+        hk_row.pack(fill="x", padx=16, pady=(2, 12))
+        self._set_hotkey = ctk.CTkCheckBox(
+            hk_row, text="Enable global hotkey:",
+            font=(F, 12), command=self._toggle_hotkey,
+        )
+        self._set_hotkey.pack(side="left", padx=(0, 8))
+        if self._prefs.enable_hotkey:
+            self._set_hotkey.select()
+        self._hk_combo_entry = ctk.CTkEntry(
+            hk_row, font=(F, 11), fg_color=C["input"],
+            border_color=C["border"], width=160, height=28,
+        )
+        self._hk_combo_entry.pack(side="left", padx=(0, 8))
+        self._hk_combo_entry.insert(0, self._prefs.hotkey_combo)
+        ctk.CTkButton(
+            hk_row, text="Apply", width=70, height=28,
+            font=(F, 10), fg_color=C["accent"],
+            command=self._apply_hotkey_combo,
+        ).pack(side="left")
+
+        # ═══════════════════════════════════════════════════════════
         #  ONBOARDING / WELCOME PANEL
         # ═══════════════════════════════════════════════════════════
         wel_card = ctk.CTkFrame(fr, fg_color=C["card"], corner_radius=8,
@@ -2345,6 +2551,153 @@ class TokenSaverApp(ctk.CTk):
         except OSError as e:
             self._toast(f"Remove failed: {e}", "error")
         self._refresh_autostart_status()
+
+    # ── HTTP backend / browser ext / overlay / hotkey status ─────────
+
+    def _refresh_backend_statuses(self) -> None:
+        """Update HTTP / overlay / hotkey status labels in Settings."""
+        # HTTP server
+        if hasattr(self, "_bk_status_lbl"):
+            try:
+                from .http_server import is_port_free
+                port = self._prefs.http_port
+                # If port is NOT free, server is bound (assume by us).
+                if not is_port_free(port):
+                    self._bk_status_lbl.configure(
+                        text=f"RUNNING on 127.0.0.1:{port}", text_color=C["ok"],
+                    )
+                else:
+                    self._bk_status_lbl.configure(
+                        text=f"NOT RUNNING (tray needs to start it)",
+                        text_color=C["warn"],
+                    )
+            except Exception as e:
+                self._bk_status_lbl.configure(
+                    text=f"check failed: {e}", text_color=C["err"],
+                )
+
+        # Overlay (separate process, detect via single_instance lock)
+        if hasattr(self, "_ov_status_lbl"):
+            try:
+                from .single_instance import is_locked
+                if is_locked("ClaudeTokenSaverOverlay"):
+                    self._ov_status_lbl.configure(
+                        text="Overlay process running", text_color=C["ok"],
+                    )
+                elif self._prefs.show_overlay:
+                    self._ov_status_lbl.configure(
+                        text="Toggle ON but process not running",
+                        text_color=C["warn"],
+                    )
+                else:
+                    self._ov_status_lbl.configure(
+                        text="Disabled", text_color=C["fg3"],
+                    )
+            except Exception as e:
+                self._ov_status_lbl.configure(
+                    text=f"check failed: {e}", text_color=C["err"],
+                )
+
+        # Hotkey (in-process; check via /health round-trip is overkill,
+        # just trust the pref. Real status requires tray-process IPC.)
+        if hasattr(self, "_hk_status_lbl"):
+            if self._prefs.enable_hotkey:
+                self._hk_status_lbl.configure(
+                    text=f"Bound: {self._prefs.hotkey_combo}",
+                    text_color=C["ok"],
+                )
+            else:
+                self._hk_status_lbl.configure(text="Disabled", text_color=C["fg3"])
+
+    def _toggle_overlay(self) -> None:
+        """Persist pref, spawn/kill overlay subprocess to match."""
+        on = bool(self._set_overlay.get())
+        self._prefs.show_overlay = on
+        if not self._prefs.save():
+            self._toast("Failed to save preference", "warning")
+            return
+        # We can spawn the overlay but we can't kill it cleanly from here
+        # (it's in another process). User must restart tray to pick up "off".
+        if on:
+            try:
+                import subprocess
+                exe_path = (Path.home() / "Desktop" / "ClaudeTokenSaver"
+                            / "ClaudeTokenSaver.exe")
+                if exe_path.is_file():
+                    args = [str(exe_path), "--overlay"]
+                else:
+                    args = [sys.executable, "-m", "claude_backend.overlay"]
+                creationflags = 0
+                if sys.platform == "win32":
+                    creationflags = (subprocess.CREATE_NO_WINDOW
+                                     | subprocess.DETACHED_PROCESS)
+                subprocess.Popen(args, creationflags=creationflags, close_fds=True)
+                self._toast("Overlay started", "success")
+            except Exception as e:
+                self._toast(f"Overlay spawn failed: {e}", "error")
+        else:
+            self._toast(
+                "Overlay will exit on next tray restart (or close it via right-click in dev)",
+                "info",
+            )
+        self._refresh_backend_statuses()
+
+    def _toggle_hotkey(self) -> None:
+        """Persist pref, register/unregister hotkey IF we own a hotkey daemon
+        in this process (we don't — it's in tray). Pref change requires tray
+        restart to pick up.
+        """
+        on = bool(self._set_hotkey.get())
+        self._prefs.enable_hotkey = on
+        if not self._prefs.save():
+            self._toast("Failed to save preference", "warning")
+            return
+        self._toast(
+            f"Hotkey: {'ON' if on else 'OFF'} (restart tray to apply)",
+            "info" if on else "warning",
+        )
+        self._refresh_backend_statuses()
+
+    def _apply_hotkey_combo(self) -> None:
+        """Save typed combo to prefs."""
+        combo = self._hk_combo_entry.get().strip()
+        if not combo:
+            self._toast("Empty combo not allowed", "warning")
+            return
+        self._prefs.hotkey_combo = combo
+        if self._prefs.save():
+            self._toast(f"Hotkey combo saved: {combo} (restart tray to apply)",
+                        "info")
+        self._refresh_backend_statuses()
+
+    def _open_extension_folder(self) -> None:
+        """Open the bundled extension folder in Explorer."""
+        # Try several locations: dev source tree, frozen exe sibling, etc.
+        candidates = [
+            Path(__file__).resolve().parent.parent / "extensions" / "claude_token_saver",
+            Path.cwd() / "extensions" / "claude_token_saver",
+        ]
+        for cand in candidates:
+            if cand.is_dir():
+                try:
+                    import subprocess
+                    if sys.platform == "win32":
+                        subprocess.Popen(
+                            ["explorer", str(cand)],
+                            creationflags=subprocess.CREATE_NO_WINDOW,
+                        )
+                    else:
+                        subprocess.Popen(["xdg-open", str(cand)])
+                    self._toast(f"Opened: {cand}", "info")
+                    return
+                except OSError as e:
+                    self._toast(f"Open failed: {e}", "error")
+                    return
+        self._toast(
+            "Extension folder not found. Look in source tree at "
+            "extensions/claude_token_saver/",
+            "warning",
+        )
 
     def _ai_show_tutorial(self) -> None:
         """Toggle the Auto-Inject tutorial text."""

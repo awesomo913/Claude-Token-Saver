@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Token Saver — Improve & Copy",
+  "version": "0.1.0",
+  "description": "Adds an Improve button to claude.ai that pipes your prompt through Token Saver's Smart Mode (typo fix + project context).",
+  "host_permissions": [
+    "https://claude.ai/*",
+    "http://127.0.0.1:7321/*"
+  ],
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_title": "Claude Token Saver",
+    "default_icon": {
+      "128": "icon-128.png"
+    }
+  }
+}

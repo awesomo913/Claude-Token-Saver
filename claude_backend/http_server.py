@@ -1,0 +1,411 @@
+"""Localhost HTTP backend — three thin clients funnel into one server.
+
+Browser extension, Win32 overlay window, and global hotkey daemon all
+POST captured prompts here. Server runs in tray process so it's always
+available while the tray is up.
+
+Endpoints:
+  GET  /health     -> {ok: true, version}
+  GET  /projects   -> [{slug, path, name, last_used_iso}] (max 5)
+  POST /improve    -> {improved_prompt, token_savings_estimate, builder_opened}
+
+Communication with GUI process is via a pending-file at
+~/.claude/token_saver_pending.json. Server writes it; GUI polls for it
+via tkinter.after() loop, loads the contents into the Builder tab,
+then deletes the file. If GUI isn't running, server spawns it via the
+same mechanism session_launcher uses.
+
+Security:
+  - Bound to 127.0.0.1 ONLY (never 0.0.0.0). Localhost-only access.
+  - CORS strict to chrome-extension://* origins for browser ext.
+  - No auth (it's a local-tool API).
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import socket
+import subprocess
+import sys
+import threading
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
+
+PENDING_PATH = Path.home() / ".claude" / "token_saver_pending.json"
+VERSION = "0.1.0"
+
+# Module-level state for the running server. Tray creates one on boot.
+_server: ThreadingHTTPServer | None = None
+_server_thread: threading.Thread | None = None
+
+
+# ── Project enumeration ─────────────────────────────────────────────
+
+def _claude_projects_dir() -> Path:
+    """Where Token Saver writes per-project memory files."""
+    return Path.home() / ".claude" / "projects"
+
+
+def _read_project_path_from_manifest(memory_dir: Path) -> str | None:
+    """Recover the original project root for a Token-Saver-bootstrapped slug.
+
+    Strategy (in order):
+
+    1. Read `origin.txt` (sibling of memory/). Authoritative source written
+       by `memory_files.write_memory_files`. Has been written since v0.2;
+       older bootstraps don't have it (fall through to step 2).
+    2. Reverse-engineer from slug shape (C-- prefix means C:\\). Lossy when
+       project paths contain dashes — multiple originals collapse to same
+       slug. Returns the candidate ONLY if its `.claude/manifest.jsonl` exists.
+    3. Give up — return None. /projects still lists the project by slug name
+       but the picker can't use it for context until next prep regenerates.
+    """
+    slug_dir = memory_dir.parent
+    slug = slug_dir.name
+    if not slug:
+        return None
+
+    # 1. Authoritative: origin.txt
+    origin = slug_dir / "origin.txt"
+    if origin.is_file():
+        try:
+            txt = origin.read_text(encoding="utf-8").strip()
+            if txt and Path(txt).is_dir():
+                return txt
+        except OSError:
+            pass
+
+    # 2. Reverse-engineer Windows-style slug
+    if len(slug) >= 3 and slug[1:3] == "--":
+        # `C--Foo-Bar` -> `C:\Foo\Bar`. Lossy if real path had dashes.
+        candidate = f"{slug[0]}:" + os.sep + slug[3:].replace("-", os.sep)
+        cp = Path(candidate)
+        if (cp / ".claude" / "manifest.jsonl").is_file():
+            return str(cp)
+
+    return None
+
+
+def list_recent_projects(limit: int = 5) -> list[dict]:
+    """Enumerate Token-Saver-bootstrapped projects, sorted by recency.
+
+    Returns up to `limit` projects. Each entry: slug, path, name,
+    last_used_iso. Top-pinned: Prefs.last_project_path if set.
+    """
+    out: list[dict] = []
+    pdir = _claude_projects_dir()
+    if not pdir.is_dir():
+        return out
+
+    candidates: list[tuple[float, dict]] = []
+    for slug_dir in pdir.iterdir():
+        if not slug_dir.is_dir():
+            continue
+        memory_dir = slug_dir / "memory"
+        if not memory_dir.is_dir():
+            continue
+        # Use memory dir mtime as recency signal
+        try:
+            mtime = memory_dir.stat().st_mtime
+        except OSError:
+            continue
+        project_path = _read_project_path_from_manifest(memory_dir) or ""
+        name = Path(project_path).name if project_path else slug_dir.name
+        candidates.append((mtime, {
+            "slug": slug_dir.name,
+            "path": project_path,
+            "name": name,
+            "last_used_iso": datetime.fromtimestamp(mtime).isoformat(timespec="seconds"),
+        }))
+
+    # Sort by mtime descending
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    out = [entry for _, entry in candidates[:limit]]
+
+    # Pin last_project_path to the top if not already there
+    try:
+        from .prefs import Prefs
+        prefs = Prefs.load()
+        last = prefs.last_project_path
+        if last:
+            existing_idx = next(
+                (i for i, e in enumerate(out) if e["path"] == last), -1,
+            )
+            if existing_idx > 0:
+                out.insert(0, out.pop(existing_idx))
+            elif existing_idx == -1 and Path(last).is_dir():
+                # Add it to the top
+                out.insert(0, {
+                    "slug": "(current)",
+                    "path": last,
+                    "name": Path(last).name,
+                    "last_used_iso": datetime.now().isoformat(timespec="seconds"),
+                })
+                out = out[:limit]
+    except Exception as e:
+        logger.debug("Pinning last_project_path failed: %s", e)
+
+    return out
+
+
+# ── Improve pipeline ────────────────────────────────────────────────
+
+def run_improve_pipeline(
+    prompt: str, project_path: str = "", intent_hint: str = "",
+) -> dict:
+    """Run prompt_builder pipeline. Returns dict with improved_prompt + estimate.
+
+    Doesn't touch the GUI directly — that's the pending-file's job.
+    """
+    from .prompt_builder import (
+        clean_request, build_smart_prompt, review_prompt, detect_intent,
+    )
+    from .tokenizer import count_tokens
+
+    cleaned = clean_request(prompt)
+
+    # Pull project conventions if a project was picked.
+    code_context = ""
+    project_conventions = ""
+    if project_path:
+        pp = Path(project_path)
+        conv_path = pp / ".claude" / "memory" / "project_conventions.md"
+        if conv_path.is_file():
+            try:
+                project_conventions = conv_path.read_text(encoding="utf-8")[:2000]
+            except OSError:
+                pass
+
+    intent = intent_hint or detect_intent(cleaned)
+    improved = build_smart_prompt(
+        request=cleaned,
+        code_context=code_context,
+        project_conventions=project_conventions,
+    )
+    review = review_prompt(prompt, improved)
+
+    return {
+        "improved_prompt": improved,
+        "original_tokens": count_tokens(prompt),
+        "improved_tokens": review["prompt_tokens"],
+        "intent": intent,
+        "expansion_ratio": review["expansion_ratio"],
+        "impact": review["impact"],
+    }
+
+
+def write_pending(payload: dict) -> bool:
+    """Write IPC payload for GUI to pick up. Atomic via os.replace."""
+    try:
+        PENDING_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = PENDING_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        os.replace(tmp, PENDING_PATH)
+        return True
+    except OSError as e:
+        logger.warning("Failed to write pending file: %s", e)
+        return False
+
+
+def ensure_gui_running() -> bool:
+    """If GUI not running, spawn it. Returns True if it should appear soon."""
+    try:
+        from .single_instance import is_locked
+        if is_locked("ClaudeTokenSaverGUI"):
+            return True
+    except Exception as e:
+        logger.debug("is_locked check failed: %s", e)
+
+    # Spawn GUI subprocess. Reuse session_launcher's spawn helper for
+    # consistency in detached-process flags.
+    try:
+        from .session_launcher import _spawn_detached, _find_exe
+        exe = _find_exe()
+        if exe is not None:
+            return _spawn_detached([str(exe)])
+        # Fallback to python -m
+        py = sys.executable
+        if sys.platform == "win32":
+            cand = Path(py).with_name("pythonw.exe")
+            if cand.is_file():
+                py = str(cand)
+        return _spawn_detached([py, "-m", "claude_backend.gui"])
+    except Exception as e:
+        logger.warning("Failed to spawn GUI: %s", e)
+        return False
+
+
+# ── HTTP handler ────────────────────────────────────────────────────
+
+ALLOWED_ORIGIN_PREFIXES = (
+    "chrome-extension://",
+    "moz-extension://",
+    "edge-extension://",
+)
+
+
+def _origin_allowed(origin: str) -> bool:
+    if not origin:
+        return True  # curl, native callers
+    return origin.startswith(ALLOWED_ORIGIN_PREFIXES)
+
+
+class _Handler(BaseHTTPRequestHandler):
+    """Minimal request router."""
+
+    # Silence default per-request stderr logging.
+    def log_message(self, format: str, *args) -> None:  # noqa: A002
+        logger.debug("%s - %s", self.client_address[0], format % args)
+
+    def _send_json(self, code: int, payload: dict, origin: str = "") -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        if origin and _origin_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _handle_options(self) -> None:
+        origin = self.headers.get("Origin", "")
+        self.send_response(204)
+        if origin and _origin_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self._handle_options()
+
+    def do_GET(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        origin = self.headers.get("Origin", "")
+        if path == "/health":
+            self._send_json(200, {"ok": True, "version": VERSION}, origin)
+        elif path == "/projects":
+            try:
+                projects = list_recent_projects(limit=5)
+                self._send_json(200, {"projects": projects}, origin)
+            except Exception as e:
+                logger.exception("/projects failed")
+                self._send_json(500, {"error": str(e)}, origin)
+        else:
+            self._send_json(404, {"error": "not found"}, origin)
+
+    def do_POST(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        origin = self.headers.get("Origin", "")
+
+        if not _origin_allowed(origin):
+            self._send_json(403, {"error": "origin not allowed"}, "")
+            return
+
+        if path != "/improve":
+            self._send_json(404, {"error": "not found"}, origin)
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length).decode("utf-8") if length else ""
+            data = json.loads(raw) if raw else {}
+        except (ValueError, json.JSONDecodeError) as e:
+            self._send_json(400, {"error": f"bad JSON: {e}"}, origin)
+            return
+
+        prompt = str(data.get("prompt", ""))
+        project_path = str(data.get("project_path", ""))
+        intent_hint = str(data.get("intent_hint", ""))
+
+        if not prompt.strip():
+            self._send_json(400, {"error": "prompt is empty"}, origin)
+            return
+
+        try:
+            result = run_improve_pipeline(prompt, project_path, intent_hint)
+        except Exception as e:
+            logger.exception("/improve pipeline failed")
+            self._send_json(500, {"error": str(e)}, origin)
+            return
+
+        # Write pending file for GUI; spawn GUI if needed.
+        write_pending({
+            "kind": "improve_request",
+            "ts": datetime.now().isoformat(timespec="seconds"),
+            "original_prompt": prompt,
+            "project_path": project_path,
+            **result,
+        })
+        gui_ok = ensure_gui_running()
+
+        result["builder_opened"] = gui_ok
+        self._send_json(200, result, origin)
+
+
+# ── Public API ──────────────────────────────────────────────────────
+
+def is_port_free(port: int) -> bool:
+    """Check whether 127.0.0.1:port is free for bind."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.5)
+    try:
+        s.bind(("127.0.0.1", port))
+        s.close()
+        return True
+    except OSError:
+        return False
+
+
+def start_server(port: int) -> bool:
+    """Start HTTP server in a daemon thread. Idempotent.
+
+    Returns True on successful start (or already-running). False if port
+    is unavailable or another error prevents binding.
+    """
+    global _server, _server_thread
+    if _server is not None and _server_thread is not None and _server_thread.is_alive():
+        return True
+
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
+    except OSError as e:
+        logger.warning("HTTP server bind failed on 127.0.0.1:%d: %s", port, e)
+        return False
+
+    thread = threading.Thread(
+        target=server.serve_forever,
+        name="token_saver_http",
+        daemon=True,
+    )
+    thread.start()
+    _server = server
+    _server_thread = thread
+    logger.info("HTTP server listening on 127.0.0.1:%d", port)
+    return True
+
+
+def stop_server() -> None:
+    """Shut down the running server. Mostly for tests / Quit."""
+    global _server, _server_thread
+    if _server is not None:
+        try:
+            _server.shutdown()
+            _server.server_close()
+        except Exception as e:
+            logger.debug("Server shutdown error: %s", e)
+    _server = None
+    _server_thread = None
+
+
+def is_running() -> bool:
+    """Quick check whether server thread is alive."""
+    return _server_thread is not None and _server_thread.is_alive()

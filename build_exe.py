@@ -59,10 +59,17 @@ cmd = [
     "--hidden-import", "claude_backend.prefs",
     "--hidden-import", "claude_backend.single_instance",
     "--hidden-import", "claude_backend.session_launcher",
+    "--hidden-import", "claude_backend.http_server",
+    "--hidden-import", "claude_backend.overlay",
+    "--hidden-import", "claude_backend.hotkey",
+    "--hidden-import", "keyboard",
+    "--hidden-import", "pyautogui",
+    "--hidden-import", "pyperclip",
     "--hidden-import", "pystray",
     "--hidden-import", "pystray._win32",
     "--collect-submodules", "customtkinter",
     "--collect-submodules", "pystray",
+    "--collect-submodules", "keyboard",
     "launch_token_saver.py",
 ]
 

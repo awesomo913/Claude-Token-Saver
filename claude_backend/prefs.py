@@ -34,6 +34,22 @@ class Prefs:
     auto_launch_gui_on_session: bool = False  # opt-in: open GUI on Claude session
     auto_launch_minimized: bool = True  # if auto-launch on, prefer tray over window
 
+    # ── HTTP backend (Phase 0) ────────────────────────────────────────
+    http_port: int = 7321  # localhost-only HTTP API for browser ext / overlay / hotkey
+
+    # ── Floating overlay button (Phase 2) ─────────────────────────────
+    show_overlay: bool = False  # Win32 always-on-top "Improve & Copy" pill
+    overlay_position: list = None  # type: ignore  # [x, y] screen coords; None = first-launch default
+
+    # ── Global hotkey daemon (Phase 3) ────────────────────────────────
+    enable_hotkey: bool = False
+    hotkey_combo: str = "ctrl+shift+i"
+
+    def __post_init__(self) -> None:
+        # Mutable defaults for dataclass fields must be created lazily.
+        if self.overlay_position is None:
+            self.overlay_position = [0, 0]
+
     @classmethod
     def load(cls) -> "Prefs":
         """Load prefs. Missing file or bad JSON -> defaults."""

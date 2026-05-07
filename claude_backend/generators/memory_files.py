@@ -111,6 +111,12 @@ def _gen_hot_functions(analysis: ProjectAnalysis) -> str:
 def write_memory_files(analysis: ProjectAnalysis) -> list[str]:
     """Write memory files to both Claude Code dir and project dir.
 
+    Also writes an origin.txt next to the Claude Code memory dir
+    recording the original absolute project path. The slug-based
+    directory name is lossy (path separators, colons, and spaces all
+    collapse to dashes), so origin.txt is the authoritative reverse-
+    lookup used by http_server's /projects endpoint.
+
     Returns list of written file paths.
     """
     files = generate_memory_files(analysis)
@@ -123,6 +129,14 @@ def write_memory_files(analysis: ProjectAnalysis) -> list[str]:
             path = target_dir / filename
             path.write_text(content, encoding="utf-8")
             written.append(str(path))
+
+    # Write origin.txt at the slug dir's parent (sibling of memory/) so
+    # /projects can recover the real path without slug-reverse-mangling.
+    try:
+        origin = claude_dir.parent / "origin.txt"
+        origin.write_text(str(analysis.root.resolve()), encoding="utf-8")
+    except OSError as e:
+        logger.debug("Failed to write origin.txt: %s", e)
 
     logger.info("Wrote %d memory files to 2 locations", len(files))
     return written
