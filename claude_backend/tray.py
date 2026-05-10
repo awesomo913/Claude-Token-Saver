@@ -248,6 +248,29 @@ def run() -> int:
         except Exception as e:
             logger.warning("Overlay spawn failed: %s", e)
 
+    # Auto-start Ollama daemon if installed and pref is on, so local
+    # AI models are reachable as soon as Token Saver is up. Runs in a
+    # background thread because start_daemon polls up to 8s for the
+    # server to become reachable. Failure is non-fatal — Settings shows
+    # "Ollama not running" and download buttons surface a friendly
+    # toast (handled in gui.py).
+    if prefs is not None and getattr(prefs, "auto_start_ollama", True):
+        try:
+            from .ollama_manager import OllamaManager
+
+            def _boot_ollama() -> None:
+                try:
+                    OllamaManager().start_daemon(wait_seconds=8.0)
+                except Exception as e:
+                    logger.warning("Ollama auto-start failed: %s", e)
+
+            threading.Thread(
+                target=_boot_ollama, daemon=True,
+                name="ts_ollama_autostart",
+            ).start()
+        except Exception as e:
+            logger.warning("Ollama auto-start dispatch failed: %s", e)
+
     # Register global hotkey if pref is on. keyboard library installs an
     # OS-level hook in the current process — runs in tray process.
     if prefs is not None and prefs.enable_hotkey:

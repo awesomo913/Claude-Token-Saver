@@ -2225,27 +2225,46 @@ class TokenSaverApp(ctk.CTk):
         )
         self._pull_progress.set(0)
 
-        def _on_running_check(running: bool) -> None:
-            if not running:
-                self._pull_status.configure(
-                    text="Ollama not running — install/start it first",
-                    text_color=C["warn"],
-                )
-                self._pull_progress.set(0)
-                self._toast(
-                    "Ollama isn't running. Install from ollama.com, "
-                    "then click Refresh.",
-                    "warning",
-                )
+        def _on_running_check(running: bool, started: bool) -> None:
+            if running:
+                if started:
+                    self._toast("Ollama started.", "info")
+                self._begin_pull(name)
                 return
-            self._begin_pull(name)
+            # Ollama not reachable AND we couldn't start it (or it's
+            # not installed). Surface install/start guidance.
+            self._pull_status.configure(
+                text="Ollama not running — install/start it first",
+                text_color=C["warn"],
+            )
+            self._pull_progress.set(0)
+            self._toast(
+                "Ollama isn't running. Install from ollama.com, "
+                "then click Refresh.",
+                "warning",
+            )
 
         def _probe() -> None:
+            running = False
+            started = False
             try:
                 running = self._ollama.is_running()
+                if not running:
+                    # Try auto-start before giving up. start_daemon polls
+                    # internally and returns True only when reachable.
+                    self.after(
+                        0,
+                        lambda: self._pull_status.configure(
+                            text="Starting Ollama daemon...",
+                            text_color=C["fg2"],
+                        ),
+                    )
+                    if self._ollama.start_daemon(wait_seconds=8.0):
+                        running = True
+                        started = True
             except Exception:
-                running = False
-            self.after(0, _on_running_check, running)
+                pass
+            self.after(0, _on_running_check, running, started)
 
         threading.Thread(target=_probe, daemon=True,
                          name="ts_ollama_probe").start()

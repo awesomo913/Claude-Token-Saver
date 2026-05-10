@@ -45,6 +45,12 @@ class Prefs:
     enable_hotkey: bool = False
     hotkey_combo: str = "ctrl+shift+i"
 
+    # ── Local AI (Ollama) auto-start ──────────────────────────────────
+    # Spawns `ollama app.exe` at tray boot so downloaded models are
+    # reachable after a reboot without the user manually launching
+    # Ollama. Skipped silently if Ollama isn't installed.
+    auto_start_ollama: bool = True
+
     def __post_init__(self) -> None:
         # Mutable defaults for dataclass fields must be created lazily.
         if self.overlay_position is None:

@@ -7,8 +7,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shutil
+import subprocess
+import sys
 import threading
+import time
 import urllib.request
+from pathlib import Path
 from typing import Any, Callable, Optional
 from urllib.error import HTTPError, URLError
 
@@ -49,6 +55,81 @@ class OllamaManager:
             return True
         except Exception:
             return False
+
+    @staticmethod
+    def find_executable() -> Optional[Path]:
+        """Locate the Ollama tray binary so we can auto-start the daemon.
+
+        Preference order:
+          1. `ollama app.exe` — Windows tray app; spawning it starts the
+             daemon AND drops a tray icon the user can manage. Best UX.
+          2. `ollama.exe` — CLI; we'd have to call `ollama serve` and
+             keep the process. Less ideal but works as fallback.
+          3. PATH lookup as a last resort.
+
+        Returns None if Ollama isn't installed.
+        """
+        if sys.platform != "win32":
+            cli = shutil.which("ollama")
+            return Path(cli) if cli else None
+
+        candidates = [
+            Path(os.environ.get("LOCALAPPDATA", ""))
+            / "Programs" / "Ollama" / "ollama app.exe",
+            Path(os.environ.get("LOCALAPPDATA", ""))
+            / "Programs" / "Ollama" / "ollama.exe",
+            Path(r"C:\Program Files\Ollama\ollama app.exe"),
+            Path(r"C:\Program Files\Ollama\ollama.exe"),
+        ]
+        for p in candidates:
+            if p.is_file():
+                return p
+        on_path = shutil.which("ollama")
+        return Path(on_path) if on_path else None
+
+    def start_daemon(self, wait_seconds: float = 8.0) -> bool:
+        """Spawn the Ollama daemon if installed, and wait until reachable.
+
+        Idempotent: returns True immediately if `is_running()` already.
+        Returns False if Ollama isn't installed or didn't come up within
+        `wait_seconds` (poll every 250ms).
+
+        Detached spawn so closing Token Saver doesn't kill the daemon —
+        users may want Ollama to keep running for other apps.
+        """
+        if self.is_running():
+            return True
+        exe = self.find_executable()
+        if exe is None:
+            logger.info("Ollama not installed — auto-start skipped.")
+            return False
+        try:
+            creationflags = 0
+            if sys.platform == "win32":
+                creationflags = (subprocess.CREATE_NO_WINDOW
+                                 | subprocess.DETACHED_PROCESS)
+            args: list[str] = [str(exe)]
+            if exe.name.lower() == "ollama.exe":
+                # Plain CLI — explicitly start the server.
+                args.append("serve")
+            subprocess.Popen(
+                args, creationflags=creationflags, close_fds=True,
+                cwd=str(exe.parent),
+            )
+        except OSError as e:
+            logger.warning("Ollama spawn failed (%s): %s", exe, e)
+            return False
+
+        # Poll until reachable or timeout.
+        deadline = time.monotonic() + wait_seconds
+        while time.monotonic() < deadline:
+            if self.is_running():
+                logger.info("Ollama daemon is up (started via %s).", exe.name)
+                return True
+            time.sleep(0.25)
+        logger.warning("Ollama daemon did not respond within %.1fs.",
+                       wait_seconds)
+        return False
 
     # ── Model listing ──────────────────────────────────────────────────
 
