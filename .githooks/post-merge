@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Mirror of post-commit for `git pull` / `git merge` flows. Same logic,
+# same skip-on-noisy-only behavior.
+set -e
+
+repo_root="$(git rev-parse --show-toplevel)"
+changed=$(git diff-tree --no-commit-id --name-only -r HEAD ORIG_HEAD 2>/dev/null || true)
+needs_build=false
+while IFS= read -r path; do
+    case "$path" in
+        claude_backend/*|ai/*|classifier/*|extension_native_bridge/*|extensions/*|gemini_coder/*|gemini_coder_web/*|ui/*|scripts/build_exe.py|scripts/ensure_exe_current.py|launch_token_saver.py|launch_tray.py|broadcast.py|patch_upstream.py|build_exe.py|requirements.txt|pyproject.toml)
+            needs_build=true
+            break
+            ;;
+    esac
+done <<< "$changed"
+
+if ! $needs_build; then
+    exit 0
+fi
+
+mkdir -p "$repo_root/logs"
+log="$repo_root/logs/post_merge_rebuild_$(date +%Y%m%d_%H%M%S).log"
+nohup python "$repo_root/scripts/ensure_exe_current.py" --quiet \
+    >"$log" 2>&1 < /dev/null &
+disown 2>/dev/null || true
+echo "[post-merge] background rebuild fired -> $log"
+exit 0
