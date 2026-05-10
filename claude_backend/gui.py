@@ -2598,51 +2598,18 @@ class TokenSaverApp(ctk.CTk):
             self._settings_refresh_id = None
 
     def _refresh_backend_statuses(self) -> None:
-        """Update HTTP / overlay / hotkey status labels in Settings."""
-        # HTTP server
-        if hasattr(self, "_bk_status_lbl"):
-            try:
-                from .http_server import is_port_free
-                port = self._prefs.http_port
-                # If port is NOT free, server is bound (assume by us).
-                if not is_port_free(port):
-                    self._bk_status_lbl.configure(
-                        text=f"RUNNING on 127.0.0.1:{port}", text_color=C["ok"],
-                    )
-                else:
-                    self._bk_status_lbl.configure(
-                        text=f"NOT RUNNING (tray needs to start it)",
-                        text_color=C["warn"],
-                    )
-            except Exception as e:
-                self._bk_status_lbl.configure(
-                    text=f"check failed: {e}", text_color=C["err"],
-                )
+        """Kick off authoritative probes off the Tk main thread.
 
-        # Overlay (separate process, detect via single_instance lock)
-        if hasattr(self, "_ov_status_lbl"):
-            try:
-                from .single_instance import is_locked
-                if is_locked("ClaudeTokenSaverOverlay"):
-                    self._ov_status_lbl.configure(
-                        text="Overlay process running", text_color=C["ok"],
-                    )
-                elif self._prefs.show_overlay:
-                    self._ov_status_lbl.configure(
-                        text="Toggle ON but process not running",
-                        text_color=C["warn"],
-                    )
-                else:
-                    self._ov_status_lbl.configure(
-                        text="Disabled", text_color=C["fg3"],
-                    )
-            except Exception as e:
-                self._ov_status_lbl.configure(
-                    text=f"check failed: {e}", text_color=C["err"],
-                )
+        Uses HTTP /health for backend and psutil cmdline scan for
+        overlay (avoids Windows SO_REUSEADDR false-positives and
+        cross-process pidfile races). Runs in a daemon thread so the
+        worst-case 0.4s probe timeout cannot freeze the UI; results
+        are posted back via `after(0, ...)`.
 
-        # Hotkey (in-process; check via /health round-trip is overkill,
-        # just trust the pref. Real status requires tray-process IPC.)
+        Hotkey label is updated synchronously here because it only
+        reads prefs (no I/O).
+        """
+        # Hotkey is in-process; trust pref (no probe).
         if hasattr(self, "_hk_status_lbl"):
             if self._prefs.enable_hotkey:
                 self._hk_status_lbl.configure(
@@ -2650,7 +2617,77 @@ class TokenSaverApp(ctk.CTk):
                     text_color=C["ok"],
                 )
             else:
-                self._hk_status_lbl.configure(text="Disabled", text_color=C["fg3"])
+                self._hk_status_lbl.configure(
+                    text="Disabled", text_color=C["fg3"],
+                )
+
+        if not (hasattr(self, "_bk_status_lbl")
+                or hasattr(self, "_ov_status_lbl")):
+            return
+
+        port = self._prefs.http_port
+        show_overlay = self._prefs.show_overlay
+
+        def _probe() -> None:
+            try:
+                from .http_server import is_backend_alive
+                from .single_instance import (is_locked,
+                                              is_process_alive_by_cmdline)
+                backend_up = is_backend_alive(port)
+                overlay_up = (is_locked("ClaudeTokenSaverOverlay")
+                              or is_process_alive_by_cmdline("--overlay"))
+                self.after(0, self._apply_backend_status,
+                           backend_up, overlay_up, port, show_overlay, None)
+            except Exception as e:
+                self.after(0, self._apply_backend_status,
+                           False, False, port, show_overlay, str(e))
+
+        threading.Thread(target=_probe, daemon=True,
+                         name="ts_status_probe").start()
+
+    def _apply_backend_status(self, backend_up: bool, overlay_up: bool,
+                              port: int, show_overlay: bool,
+                              error: Optional[str]) -> None:
+        """Update status labels on the main thread from probe results."""
+        try:
+            if not self.winfo_exists():
+                return
+        except Exception:
+            return
+
+        if hasattr(self, "_bk_status_lbl"):
+            if error is not None:
+                self._bk_status_lbl.configure(
+                    text=f"check failed: {error}", text_color=C["err"],
+                )
+            elif backend_up:
+                self._bk_status_lbl.configure(
+                    text=f"RUNNING on 127.0.0.1:{port}", text_color=C["ok"],
+                )
+            else:
+                self._bk_status_lbl.configure(
+                    text="NOT RUNNING (tray needs to start it)",
+                    text_color=C["warn"],
+                )
+
+        if hasattr(self, "_ov_status_lbl"):
+            if error is not None:
+                self._ov_status_lbl.configure(
+                    text=f"check failed: {error}", text_color=C["err"],
+                )
+            elif overlay_up:
+                self._ov_status_lbl.configure(
+                    text="Overlay process running", text_color=C["ok"],
+                )
+            elif show_overlay:
+                self._ov_status_lbl.configure(
+                    text="Toggle ON but process not running",
+                    text_color=C["warn"],
+                )
+            else:
+                self._ov_status_lbl.configure(
+                    text="Disabled", text_color=C["fg3"],
+                )
 
     def _toggle_overlay(self) -> None:
         """Persist pref, spawn/kill overlay subprocess to match."""

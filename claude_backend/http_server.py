@@ -453,14 +453,49 @@ class _Handler(BaseHTTPRequestHandler):
 # ── Public API ──────────────────────────────────────────────────────
 
 def is_port_free(port: int) -> bool:
-    """Check whether 127.0.0.1:port is free for bind."""
+    """Check whether 127.0.0.1:port is free for bind.
+
+    NOTE: unreliable on Windows when the running server has
+    SO_REUSEADDR set (which `http.server.HTTPServer` does by default —
+    `allow_reuse_address = 1`). A fresh bind from a different process
+    can succeed even though the port is bound. Prefer `is_backend_alive`
+    for "is OUR HTTP server up?" questions. Kept here for callers that
+    actually need pre-bind availability (e.g. start_server).
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(0.5)
     try:
-        s.bind(("127.0.0.1", port))
-        s.close()
-        return True
-    except OSError:
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+    finally:
+        try:
+            s.close()
+        except OSError:
+            pass
+
+
+def is_backend_alive(port: int, timeout: float = 0.4) -> bool:
+    """Authoritative check: is OUR HTTP backend answering on port?
+
+    Hits GET /health, returns True iff response body has `ok: true`.
+    Independent of bind semantics, so it works correctly even on
+    Windows where `is_port_free` lies due to SO_REUSEADDR.
+    """
+    import json as _json
+    import urllib.error
+    import urllib.request
+
+    url = f"http://127.0.0.1:{port}/health"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            if r.status != 200:
+                return False
+            body = _json.loads(r.read().decode("utf-8"))
+            return bool(body.get("ok"))
+    except (urllib.error.URLError, OSError, ValueError):
         return False
 
 

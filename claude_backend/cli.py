@@ -276,9 +276,8 @@ def _run_doctor() -> int:
 
     # 9. HTTP backend (informational; critical iff anyone needs it)
     try:
-        from .http_server import is_port_free
-        port_free = is_port_free(p.http_port)
-        running = not port_free
+        from .http_server import is_backend_alive
+        running = is_backend_alive(p.http_port)
         checks.append((
             f"HTTP backend on 127.0.0.1:{p.http_port}",
             running,
@@ -290,7 +289,9 @@ def _run_doctor() -> int:
 
     # 10. Overlay (critical iff toggle on but process missing)
     try:
-        overlay_running = is_locked("ClaudeTokenSaverOverlay")
+        from .single_instance import is_process_alive_by_cmdline
+        overlay_running = (is_locked("ClaudeTokenSaverOverlay")
+                           or is_process_alive_by_cmdline("--overlay"))
         if p.show_overlay:
             checks.append((
                 "Overlay process (toggle ON)",
