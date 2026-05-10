@@ -105,11 +105,14 @@ class OverlayButton(ctk.CTkToplevel):
             logger.debug("Failed to save overlay position: %s", e)
 
     def _build(self) -> None:
-        # Wrap-frame with a border and the button.
+        # Outer Toplevel acts as the "border": fg_color is the border color.
+        # Inner frame holds the button and is shrunk 2px on each side via
+        # pack padding so the purple shows around the edges. (CustomTkinter
+        # rejects negative width/height in .place(), so use pack instead.)
         border_color = _C["purple"]
         self.configure(fg_color=border_color)
         inner = ctk.CTkFrame(self, fg_color=_C["card"], corner_radius=6)
-        inner.place(x=2, y=2, relwidth=1, relheight=1, width=-4, height=-4)
+        inner.pack(fill="both", expand=True, padx=2, pady=2)
 
         btn = ctk.CTkButton(
             inner,
