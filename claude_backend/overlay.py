@@ -22,6 +22,7 @@ import json
 import logging
 import threading
 import time
+import tkinter as tk
 import urllib.request
 from pathlib import Path
 
@@ -53,6 +54,17 @@ _C = {
 _OVERLAY_W = 130
 _OVERLAY_H = 40
 
+# v0.5 — auto-fade so the overlay isn't visually loud all the time.
+# The window is always-on-top (otherwise it's invisible behind whatever
+# the user's typing into), so we instead fade its alpha when the
+# cursor isn't nearby. Polled — Tk has no native cursor-leave for
+# borderless overrideredirect windows.
+_FADE_IDLE_ALPHA = 0.30           # how see-through when idle
+_FADE_ACTIVE_ALPHA = 1.0
+_FADE_PROXIMITY_PX = 120          # cursor within this → restore
+_FADE_POLL_MS = 400               # how often we check the cursor
+_FADE_DELAY_MS = 4000             # ms after last proximity → fade out
+
 
 class OverlayButton(ctk.CTkToplevel):
     """Always-on-top floating button. Owned by the GUI app's lifetime."""
@@ -63,6 +75,10 @@ class OverlayButton(ctk.CTkToplevel):
         self._prefs = Prefs.load()
         self._drag_data = {"x": 0, "y": 0, "moved": False}
         self._locked = False
+        # Fade state: ms-since-epoch of last time cursor was near.
+        self._last_proximity_ms = 0
+        self._current_alpha = _FADE_ACTIVE_ALPHA
+        self._fade_job: str | None = None
 
         self.title("Token Saver Overlay")
         self.overrideredirect(True)  # no titlebar / borders
@@ -81,6 +97,12 @@ class OverlayButton(ctk.CTkToplevel):
         self.bind("<B1-Motion>", self._on_drag_motion)
         self.bind("<ButtonRelease-1>", self._on_drag_end)
         self.bind("<Double-Button-1>", self._toggle_lock)
+
+        # Start the proximity-fade poller after the window has rendered.
+        # We mark proximity initially so the user sees the button at full
+        # opacity when it first appears — fading in cold would be ugly.
+        self._last_proximity_ms = int(time.time() * 1000)
+        self.after(_FADE_POLL_MS, self._poll_proximity)
 
     def _restore_position(self) -> tuple[int, int]:
         """Get saved position or default to top-right of primary monitor."""
@@ -157,6 +179,53 @@ class OverlayButton(ctk.CTkToplevel):
         self._locked = not self._locked
         # Visual cue: change border color when locked.
         self.configure(fg_color=_C["ok"] if self._locked else _C["purple"])
+
+    # ── Auto-fade ─────────────────────────────────────────────────
+
+    def _set_alpha(self, alpha: float) -> None:
+        """Set window translucency; clamped + cached so we don't pound
+        Tk with redundant updates."""
+        a = max(0.05, min(1.0, float(alpha)))
+        if abs(a - self._current_alpha) < 0.01:
+            return
+        try:
+            self.attributes("-alpha", a)
+            self._current_alpha = a
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _cursor_near(self) -> bool:
+        """True if the global mouse cursor is within FADE_PROXIMITY_PX
+        of the overlay's bounds. Uses winfo_pointer{x,y} which works
+        even though our window is overrideredirect."""
+        try:
+            mx = self.winfo_pointerx()
+            my = self.winfo_pointery()
+            x = self.winfo_x()
+            y = self.winfo_y()
+            w = self.winfo_width() or _OVERLAY_W
+            h = self.winfo_height() or _OVERLAY_H
+        except Exception:  # noqa: BLE001
+            return False
+        # Distance to nearest edge of the rect.
+        dx = max(x - mx, 0, mx - (x + w))
+        dy = max(y - my, 0, my - (y + h))
+        return (dx * dx + dy * dy) <= (_FADE_PROXIMITY_PX * _FADE_PROXIMITY_PX)
+
+    def _poll_proximity(self) -> None:
+        """Tick: restore alpha when cursor near, fade out after idle."""
+        now_ms = int(time.time() * 1000)
+        if self._cursor_near():
+            self._last_proximity_ms = now_ms
+            self._set_alpha(_FADE_ACTIVE_ALPHA)
+        elif now_ms - self._last_proximity_ms >= _FADE_DELAY_MS:
+            self._set_alpha(_FADE_IDLE_ALPHA)
+        # Always reschedule — cancellation happens on widget destroy
+        # via Tk's own cleanup of pending after() callbacks.
+        try:
+            self._fade_job = self.after(_FADE_POLL_MS, self._poll_proximity)
+        except tk.TclError:
+            self._fade_job = None
 
     # ── Click pipeline ────────────────────────────────────────────
 
