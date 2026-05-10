@@ -179,11 +179,21 @@ def _read_project_path_from_manifest(memory_dir: Path) -> str | None:
     return None
 
 
-def list_recent_projects(limit: int = 5) -> list[dict]:
+def list_recent_projects(
+    limit: int = 5, *, recovered_only: bool = True,
+) -> list[dict]:
     """Enumerate Token-Saver-bootstrapped projects, sorted by recency.
 
     Returns up to `limit` projects. Each entry: slug, path, name,
     last_used_iso. Top-pinned: Prefs.last_project_path if set.
+
+    `recovered_only=True` (default) skips entries whose original path
+    couldn't be recovered (no `origin.txt` AND filesystem walk failed,
+    OR walk succeeded but `.claude/manifest.jsonl` is gone). Stale
+    pytest temp dirs and deleted worktrees fall into this bucket and
+    just clutter the picker. Pass `False` to include them anyway (e.g.
+    if you want to surface "this project was bootstrapped but the
+    folder vanished" diagnostics).
     """
     out: list[dict] = []
     pdir = _claude_projects_dir()
@@ -203,6 +213,8 @@ def list_recent_projects(limit: int = 5) -> list[dict]:
         except OSError:
             continue
         project_path = _read_project_path_from_manifest(memory_dir) or ""
+        if recovered_only and not project_path:
+            continue
         name = Path(project_path).name if project_path else slug_dir.name
         candidates.append((mtime, {
             "slug": slug_dir.name,
