@@ -2211,8 +2211,52 @@ class TokenSaverApp(ctk.CTk):
         self._run_async(do, done)
 
     def _pull_model(self, name: str) -> None:
-        if not name or name.startswith("("): self._toast("Enter a model name", "warning"); return
-        self._pull_status.configure(text=f"Downloading {name}..."); self._pull_progress.set(0)
+        if not name or name.startswith("("):
+            self._toast("Enter a model name", "warning")
+            return
+        # Guard: Ollama daemon must be reachable before we attempt pull.
+        # Without this, the bare urllib ConnectionRefusedError leaked into
+        # the toast as "Download failed: <urlopen error [WinError 10061]...>".
+        # is_running() is a 3s-timeout HTTP probe — run off the Tk main
+        # thread so the UI doesn't freeze when Ollama is slow to refuse.
+        self._pull_status.configure(
+            text=f"Checking Ollama before downloading {name}...",
+            text_color=C["fg2"],
+        )
+        self._pull_progress.set(0)
+
+        def _on_running_check(running: bool) -> None:
+            if not running:
+                self._pull_status.configure(
+                    text="Ollama not running — install/start it first",
+                    text_color=C["warn"],
+                )
+                self._pull_progress.set(0)
+                self._toast(
+                    "Ollama isn't running. Install from ollama.com, "
+                    "then click Refresh.",
+                    "warning",
+                )
+                return
+            self._begin_pull(name)
+
+        def _probe() -> None:
+            try:
+                running = self._ollama.is_running()
+            except Exception:
+                running = False
+            self.after(0, _on_running_check, running)
+
+        threading.Thread(target=_probe, daemon=True,
+                         name="ts_ollama_probe").start()
+
+    def _begin_pull(self, name: str) -> None:
+        """Kick off the actual model pull. Caller must have already
+        verified `self._ollama.is_running()`."""
+        self._pull_status.configure(
+            text=f"Downloading {name}...", text_color=C["fg"],
+        )
+        self._pull_progress.set(0)
         self._toast(f"Downloading {name}...", "info")
         self._log(f"Pulling model: {name}")
 
@@ -2231,21 +2275,50 @@ class TokenSaverApp(ctk.CTk):
                 self.after(600, lambda: self._select_model(name))
 
         def on_error(err):
-            self.after(0, lambda: self._pull_status.configure(text=f"Error: {err}"))
-            self.after(0, lambda: self._toast(f"Download failed: {err}", "error"))
+            # Friendly mapping for the common case where Ollama died
+            # mid-pull (or wasn't fully up at the start). Mirrors the
+            # pre-check guard so the message stays consistent if the
+            # daemon flaps after we passed the guard.
+            es = str(err)
+            if "10061" in es or "ConnectionRefused" in es or "actively refused" in es:
+                friendly = "Ollama daemon stopped — restart Ollama, then retry."
+            else:
+                friendly = f"Download failed: {err}"
+            self.after(0, lambda: self._pull_status.configure(text=friendly))
+            self.after(0, lambda: self._toast(friendly, "error"))
 
         self._ollama.pull_model(name, on_progress=on_progress, on_done=on_done, on_error=on_error)
 
     def _delete_model(self, name: str) -> None:
-        def do(): return self._ollama.delete_model(name)
-        def done(ok):
-            if ok:
-                self._toast(f"Deleted: {name}", "info"); self._log(f"Deleted model: {name}")
-                if self._ollama.get_current() == name: self._ollama.set_model(None)
-            else:
-                self._toast(f"Failed to delete {name}", "error")
-            self._refresh_models()
-        self._run_async(do, done)
+        # Same off-thread is_running probe as _pull_model — the synchronous
+        # 3s HTTP timeout would otherwise freeze the UI when Ollama is down.
+        def _on_check(running: bool) -> None:
+            if not running:
+                self._toast(
+                    "Ollama isn't running — can't delete models.", "warning",
+                )
+                return
+            def do(): return self._ollama.delete_model(name)
+            def done(ok):
+                if ok:
+                    self._toast(f"Deleted: {name}", "info")
+                    self._log(f"Deleted model: {name}")
+                    if self._ollama.get_current() == name:
+                        self._ollama.set_model(None)
+                else:
+                    self._toast(f"Failed to delete {name}", "error")
+                self._refresh_models()
+            self._run_async(do, done)
+
+        def _probe() -> None:
+            try:
+                running = self._ollama.is_running()
+            except Exception:
+                running = False
+            self.after(0, _on_check, running)
+
+        threading.Thread(target=_probe, daemon=True,
+                         name="ts_ollama_probe_delete").start()
 
     # ── Tutorial + settings apply ──────────────────────────────────────
 
