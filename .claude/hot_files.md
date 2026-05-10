@@ -1,6 +1,6 @@
 # Hot Files — frequently referenced across recent sessions
 
-Generated: 2026-05-02T02:23:34
+Generated: 2026-05-09T22:53:56
 Decay: weight = 0.5 ^ (age_days / 7). Cutoff: 30 days.
 Source: all JSONLs under ~/.claude/projects/
 
@@ -10,18 +10,18 @@ consider preloading the top few into memory files for faster access.
 
 | Rank | Weight | File |
 |------|--------|------|
-| 1 | 95.92 | `C:\StolenEmerald\CommonSense\src\commonsense\sense_paint\editor.py` |
-| 2 | 73.34 | `C:\StolenEmerald\tools\autoplayer_v3.py` |
-| 3 | 64.93 | `C:\Users\computer\Desktop\AI\gemini_coder_web\broadcast.py` |
-| 4 | 50.99 | `C:\Users\computer\Desktop\AI\gemini_coder_web\ui\app_web.py` |
-| 5 | 40.69 | `C:/StolenEmerald/tools/autoplayer_v3.py` |
-| 6 | 34.40 | `C:\Users\computer\Desktop\AI\bubbys_game\bubbys game\game.py` |
-| 7 | 32.36 | `C:\StolenEmerald\STATE.md` |
-| 8 | 30.22 | `C:\StolenEmerald\devtool\emerald_devtool\gui\tab_runtime.py` |
-| 9 | 28.63 | `C:\StolenEmerald\devtool\emerald_devtool\core\mgba_bridge.py` |
-| 10 | 27.34 | `C:\StolenEmerald\host\StolenEmeraldHost\EmulatorWindow.cs` |
-| 11 | 27.01 | `C:\Users\computer\Desktop\AI\gemini_coder_web\cdp_client.py` |
-| 12 | 26.09 | `C:\Users\computer\Desktop\AI\bubbys_game\bubbys game\sprites.py` |
-| 13 | 21.15 | `C:/Users/computer/Desktop/AI/card-collection-anime/backend/providers/catalog.py` |
-| 14 | 19.11 | `C:\Users\computer\Desktop\AI\bubbys_game\bubbys game\levels.py` |
-| 15 | 18.60 | `C:\StolenEmerald\host\StolenEmeraldHost\CheatPanel.cs` |
+| 1 | 264.23 | `C:\Users\computer\Desktop\AI\KidsCodeAcademy\index.html` |
+| 2 | 138.78 | `C:\Quasar\tools\gui\app.py` |
+| 3 | 127.96 | `C:\Quasar\tools\gui\panels.py` |
+| 4 | 85.67 | `C:\StolenEmerald\source\src\field_specials.c` |
+| 5 | 84.88 | `C:\StolenEmerald\host\StolenEmeraldHost\EmulatorWindow.cs` |
+| 6 | 83.13 | `C:\StolenEmerald\source\data\maps\LittlerootTown_BrendansHouse_2F\scripts.inc` |
+| 7 | 69.25 | `C:\Quasar\tools\gui\dialogs.py` |
+| 8 | 64.74 | `C:\Users\computer\Desktop\AI\adhd_free\daemons\briefer.py` |
+| 9 | 50.96 | `C:\StolenEmerald\STATE.md` |
+| 10 | 50.63 | `C:\Users\computer\Desktop\My Apps\build_report.md` |
+| 11 | 46.81 | `C:\Users\computer\Desktop\AI\agentzero\.openclaw\external-channel-bridge\index.ts` |
+| 12 | 44.20 | `C:\Users\computer\Desktop\AI\agentzero\.openclaw\cost-tracker\index.ts` |
+| 13 | 44.07 | `C:\StolenEmerald\CommonSense\src\commonsense\sense_paint\editor.py` |
+| 14 | 37.41 | `C:\Users\computer\Desktop\AI\adhd_free\gui\adhdfree_gui.py` |
+| 15 | 35.98 | `C:\Users\computer\.openclaw\openclaw.json` |

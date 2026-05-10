@@ -62,11 +62,11 @@ type: reference
   - imports: ..types
 - `claude_backend/analyzers/structure_mapper.py`: Map project structure: modules, imports, public API, entry points. | exports: logger, map_modules, build_import_graph
   - imports: ..types
-- `claude_backend/auto_inject.py`: Auto-inject setup: install a Claude Code SessionStart hook. | exports: logger, SETTINGS_PATH, HOOK_ID, HOOK_DESCRIPTION, check_status, install, uninstall
+- `claude_backend/auto_inject.py`: Auto-inject setup: install Claude Code SessionStart hooks. | exports: logger, SETTINGS_PATH, HOOK_ID, HOOK_DESCRIPTION, HOOK_ID_LAUNCH, HOOK_DESC_LAUNCH, HOOK_ID_PROMPT, HOOK_DESC_PROMPT
 - `claude_backend/backend.py`: ClaudeContextManager: orchestrates scanning, analysis, and generation. | exports: logger, ClaudeContextManager
   - imports: .config, .manifest, .types, .scanners.project, .analyzers.code_extractor
 - `claude_backend/cli.py`: CLI interface for Claude token saver. | exports: main
-  - imports: .backend, .config, .tray
+  - imports: .backend, .config, ., .prefs, .single_instance
 - `claude_backend/config.py`: Configuration loading with layered defaults. | exports: logger, DEFAULT_EXTENSIONS, DEFAULT_IGNORE_DIRS, ScanConfig, load_config, save_config_example
 - `claude_backend/generators/__init__.py`: Generator modules for CLAUDE.md, memory files, and snippet libraries.
 - `claude_backend/generators/claude_md.py`: Generate a CLAUDE.md file from project analysis. | exports: logger, MARKER_START, MARKER_END, generate_claude_md, write_claude_md
@@ -77,8 +77,14 @@ type: reference
   - imports: ..types
 - `claude_backend/gui.py`: Claude Token Saver — standalone GUI for managing project context. | exports: logger, C, F, M, TEMPLATES, AI_TUTORIAL_TEXT, TUTORIAL_TEXT, TokenSaverApp
   - imports: .backend, .config, .generators.memory_files, .ollama_manager, .prefs
+- `claude_backend/hotkey.py`: Global hotkey daemon for Phase 3. | exports: logger, start, stop, is_running, current_combo
+  - imports: .prefs
+- `claude_backend/http_server.py`: Localhost HTTP backend — three thin clients funnel into one server. | exports: logger, PENDING_PATH, VERSION, list_recent_projects, run_improve_pipeline, write_pending, ensure_gui_running, ALLOWED_ORIGIN_PREFIXES
+  - imports: .prompt_builder, .tokenizer, .prefs, .single_instance, .session_launcher
 - `claude_backend/manifest.py`: Delta-aware manifest for tracking generated files with SHA-256 hashing. | exports: logger, ManifestEntry, Manifest
 - `claude_backend/ollama_manager.py`: Ollama model manager — list, pull, delete, select models via HTTP API. | exports: logger, DEFAULT_HOST, RECOMMENDED_MODELS, TURBO_QUANTS, CODING_KEYWORDS, OllamaManager
+- `claude_backend/overlay.py`: Floating overlay button for Claude Desktop (Phase 2). | exports: logger, OverlayButton, open_overlay, main
+  - imports: .prefs, .single_instance
 - `claude_backend/prefs.py`: User preferences for Token Saver GUI — small JSON store. | exports: logger, PREFS_PATH, Prefs
 - `claude_backend/prompt_builder.py`: Smart prompt builder — integrates Prompt Architect logic for better prompts. | exports: ROLES, CONSTRAINTS, REASONING, detect_intent, clean_request, build_smart_prompt, review_prompt
   - imports: .tokenizer
@@ -91,12 +97,15 @@ type: reference
   - imports: ..config, ..types
 - `claude_backend/search.py`: Fuzzy semantic search engine for code snippets. | exports: get_domain, get_domain_color, get_all_domains, score_block, SearchIndex, smart_search
   - imports: .types
+- `claude_backend/session_launcher.py`: Session launcher — invoked by Claude Code SessionStart hook. | exports: logger, main
+  - imports: .prefs, .single_instance
+- `claude_backend/single_instance.py`: Single-instance enforcement for Token Saver tray + launcher. | exports: logger, acquire_or_exit, is_locked
 - `claude_backend/storage.py`: Project storage with pathlib, proper logging, and manifest tracking. | exports: logger, ProjectStorage
   - imports: .types
 - `claude_backend/tokenizer.py`: Accurate token counting with BPE tokenizer + fast fallback. | exports: logger, count_tokens, has_bpe
 - `claude_backend/tracker.py`: Token savings tracker and session context memory. | exports: logger, TokenTracker, SessionMemory
 - `claude_backend/tray.py`: System tray icon for Claude Token Saver — passive reminder + quick actions. | exports: logger, ICON_SIZE, SNOOZE_FILE, build_menu, run
-  - imports: .auto_inject
+  - imports: .auto_inject, .single_instance, ., .prefs, .
 - `claude_backend/types.py`: Shared data types for claude_backend. | exports: FileEntry, CodeBlock, ModuleInfo, ConventionReport, ProjectAnalysis, GenerationResult
 - `claude_backend/welcome.py`: First-run welcome dialog — explains what Token Saver does, permissions, workflow. | exports: logger, WELCOME_TITLE, WELCOME_INTRO, WHAT_IT_DOES, PERMISSIONS, QUICK_START, PRO_TIP, WelcomeDialog
   - imports: .auto_inject, .prefs

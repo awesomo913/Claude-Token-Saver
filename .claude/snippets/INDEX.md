@@ -53,8 +53,8 @@
 - [`SavingsSummary`](classes/SavingsSummary.py) (from `classifier/types.py:82`) -- Aggregate savings stats.
 - [`ScanConfig`](classes/ScanConfig.py) (from `claude_backend/config.py:21`) -- Configuration for scanning and generation.
 - [`ManifestEntry`](classes/ManifestEntry.py) (from `claude_backend/manifest.py:16`) -- A single entry in the generation manifest.
-- [`Prefs`](classes/Prefs.py) (from `claude_backend/prefs.py:21`) -- User-facing preferences. Add fields here; defaults always backfilled.
 - [`FileEntry`](classes/FileEntry.py) (from `claude_backend/types.py:11`) -- A discovered file from any scanner.
+- [`CodeBlock`](classes/CodeBlock.py) (from `claude_backend/types.py:29`) -- An extracted code block (function, class, etc.).
 
 ## Patterns
 

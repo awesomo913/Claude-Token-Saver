@@ -95,9 +95,12 @@ type: reference
 | `SETTINGS_PATH` | `claude_backend/auto_inject.py` | -- |
 | `HOOK_ID` | `claude_backend/auto_inject.py` | -- |
 | `HOOK_DESCRIPTION` | `claude_backend/auto_inject.py` | -- |
-| `check_status` | `claude_backend/auto_inject.py` | Check if auto-inject is installed. Returns status dict. |
-| `install` | `claude_backend/auto_inject.py` | Install the SessionStart hook. Returns (success, message). |
-| `uninstall` | `claude_backend/auto_inject.py` | Remove the SessionStart hook. Returns (success, message). |
+| `HOOK_ID_LAUNCH` | `claude_backend/auto_inject.py` | -- |
+| `HOOK_DESC_LAUNCH` | `claude_backend/auto_inject.py` | -- |
+| `HOOK_ID_PROMPT` | `claude_backend/auto_inject.py` | -- |
+| `HOOK_DESC_PROMPT` | `claude_backend/auto_inject.py` | -- |
+| `check_status` | `claude_backend/auto_inject.py` | Status of the prep hook. |
+| `install` | `claude_backend/auto_inject.py` | Install the prep hook. Deduplicates existing prep hooks first. |
 | `logger` | `claude_backend/backend.py` | -- |
 | `ClaudeContextManager` | `claude_backend/backend.py` | Main orchestrator for the Claude token saver. |
 | `main` | `claude_backend/cli.py` | -- |
@@ -116,6 +119,21 @@ type: reference
 | `TUTORIAL_TEXT` | `claude_backend/gui.py` | -- |
 | `TokenSaverApp` | `claude_backend/gui.py` | -- |
 | `main` | `claude_backend/gui.py` | -- |
+| `logger` | `claude_backend/hotkey.py` | -- |
+| `start` | `claude_backend/hotkey.py` | Register the global hotkey. Returns True on success. |
+| `stop` | `claude_backend/hotkey.py` | Unregister the hotkey. Idempotent. |
+| `is_running` | `claude_backend/hotkey.py` | True if hotkey is currently registered. |
+| `current_combo` | `claude_backend/hotkey.py` | -- |
+| `logger` | `claude_backend/http_server.py` | -- |
+| `PENDING_PATH` | `claude_backend/http_server.py` | -- |
+| `VERSION` | `claude_backend/http_server.py` | -- |
+| `list_recent_projects` | `claude_backend/http_server.py` | Enumerate Token-Saver-bootstrapped projects, sorted by recency. |
+| `run_improve_pipeline` | `claude_backend/http_server.py` | Run prompt_builder pipeline. Returns dict with improved_prompt + estimate. |
+| `write_pending` | `claude_backend/http_server.py` | Write IPC payload for GUI to pick up. Atomic via os.replace. |
+| `ensure_gui_running` | `claude_backend/http_server.py` | If GUI not running, spawn it. Returns True if it should appear soon. |
+| `ALLOWED_ORIGIN_PREFIXES` | `claude_backend/http_server.py` | -- |
+| `is_port_free` | `claude_backend/http_server.py` | Check whether 127.0.0.1:port is free for bind. |
+| `start_server` | `claude_backend/http_server.py` | Start HTTP server in a daemon thread. Idempotent. |
 | `logger` | `claude_backend/manifest.py` | -- |
 | `ManifestEntry` | `claude_backend/manifest.py` | A single entry in the generation manifest. |
 | `Manifest` | `claude_backend/manifest.py` | Tracks generated files for delta updates. |
@@ -125,6 +143,10 @@ type: reference
 | `TURBO_QUANTS` | `claude_backend/ollama_manager.py` | -- |
 | `CODING_KEYWORDS` | `claude_backend/ollama_manager.py` | -- |
 | `OllamaManager` | `claude_backend/ollama_manager.py` | Manages Ollama models via HTTP API. No pip package needed. |
+| `logger` | `claude_backend/overlay.py` | -- |
+| `OverlayButton` | `claude_backend/overlay.py` | Always-on-top floating button. Owned by the GUI app's lifetime. |
+| `open_overlay` | `claude_backend/overlay.py` | Construct + return an overlay attached to `parent`. |
+| `main` | `claude_backend/overlay.py` | Run overlay as its own process with a hidden parent Tk root. |
 | `logger` | `claude_backend/prefs.py` | -- |
 | `PREFS_PATH` | `claude_backend/prefs.py` | -- |
 | `Prefs` | `claude_backend/prefs.py` | User-facing preferences. Add fields here; defaults always backfilled. |
@@ -141,6 +163,11 @@ type: reference
 | `score_block` | `claude_backend/search.py` | Score a code block against expanded query terms. |
 | `SearchIndex` | `claude_backend/search.py` | Pre-computed inverted index for fast searching over large snippet sets. |
 | `smart_search` | `claude_backend/search.py` | Search snippets with fuzzy matching, synonyms, and intent detection. |
+| `logger` | `claude_backend/session_launcher.py` | -- |
+| `main` | `claude_backend/session_launcher.py` | Entry point. Always exits 0 to avoid blocking session start. |
+| `logger` | `claude_backend/single_instance.py` | -- |
+| `acquire_or_exit` | `claude_backend/single_instance.py` | Try to acquire a single-instance lock. Exit cleanly if already held. |
+| `is_locked` | `claude_backend/single_instance.py` | Non-acquiring check: is another instance currently running? |
 | `logger` | `claude_backend/storage.py` | -- |
 | `ProjectStorage` | `claude_backend/storage.py` | Manages file storage for a Claude project directory. |
 | `logger` | `claude_backend/tokenizer.py` | -- |

@@ -52,6 +52,89 @@ def _claude_projects_dir() -> Path:
     return Path.home() / ".claude" / "projects"
 
 
+# Defensive cap so a malformed/very-deep slug can't blow Python's
+# recursion limit. Real Claude Code slugs are well under this.
+_SLUG_RESOLVE_MAX_DEPTH = 40
+
+
+def _resolve_slug_filesystem_walk(slug: str) -> Path | None:
+    """Decode a Claude Code slug to a real path by walking the filesystem.
+
+    Slugs collapse `\\`, ` ` (space), and literal `-` all to `-`, so a
+    slug like `C--Users-computer-Desktop-AI-claude-interaction-tool`
+    can decode to many candidates. Naive `replace('-', '\\')` only
+    finds one — we walk the disk and pick whichever exists.
+
+    Strategy: at each prefix, try the longest token-merge first. For
+    each merge, try both `-` and ` ` joiners (both are encoded the
+    same way). Returns None if no chain of existing directories spells
+    out the slug.
+
+    Symlinks are skipped — they could escape the drive root and let a
+    crafted slug resolve to an arbitrary path. Recursion depth is
+    capped to keep adversarial slugs from raising RecursionError.
+    """
+    if len(slug) < 3 or slug[1:3] != "--":
+        return None
+    drive_root = Path(f"{slug[0]}:" + os.sep)
+    if not drive_root.exists():
+        return None
+    tokens = slug[3:].split("-")
+    if not tokens or not all(tokens):
+        return None
+    if len(tokens) > _SLUG_RESOLVE_MAX_DEPTH:
+        return None
+    return _walk_resolve(drive_root, tokens)
+
+
+def _walk_resolve(prefix: Path, tokens: list[str]) -> Path | None:
+    """Recursive helper for `_resolve_slug_filesystem_walk`.
+
+    For each k from len(tokens) down to 1, take the first k tokens,
+    join them with each candidate separator (`-`, ` `), and recurse if
+    the resulting path exists on disk and is not a symlink.
+    """
+    if not tokens:
+        return prefix
+    for k in range(len(tokens), 0, -1):
+        head = tokens[:k]
+        rest = tokens[k:]
+        for joiner in ("-", " "):
+            cand = prefix / joiner.join(head)
+            try:
+                # Skip symlinks: a junction or symlink could lead the
+                # walker outside the drive root and let a crafted slug
+                # resolve to an arbitrary path on the system.
+                if cand.is_symlink() or not cand.is_dir():
+                    continue
+            except OSError:
+                continue
+            resolved = _walk_resolve(cand, rest)
+            if resolved is not None:
+                return resolved
+    return None
+
+
+def _cache_origin_txt(slug_dir: Path, real_path: str) -> None:
+    """Write origin.txt for an existing slug that lacked one — so the
+    next /projects call hits step 1 and avoids the filesystem walk.
+
+    Refuses to write if `slug_dir` isn't directly under the Claude
+    projects dir — defensive guard against a path-traversal slug name
+    redirecting the write outside the expected tree.
+    """
+    if slug_dir.parent != _claude_projects_dir():
+        logger.debug(
+            "origin.txt cache skipped: %s is outside %s",
+            slug_dir, _claude_projects_dir(),
+        )
+        return
+    try:
+        (slug_dir / "origin.txt").write_text(real_path, encoding="utf-8")
+    except OSError as e:
+        logger.debug("origin.txt cache write failed for %s: %s", slug_dir.name, e)
+
+
 def _read_project_path_from_manifest(memory_dir: Path) -> str | None:
     """Recover the original project root for a Token-Saver-bootstrapped slug.
 
@@ -60,9 +143,11 @@ def _read_project_path_from_manifest(memory_dir: Path) -> str | None:
     1. Read `origin.txt` (sibling of memory/). Authoritative source written
        by `memory_files.write_memory_files`. Has been written since v0.2;
        older bootstraps don't have it (fall through to step 2).
-    2. Reverse-engineer from slug shape (C-- prefix means C:\\). Lossy when
-       project paths contain dashes — multiple originals collapse to same
-       slug. Returns the candidate ONLY if its `.claude/manifest.jsonl` exists.
+    2. Walk the filesystem to disambiguate the slug (handles paths with
+       internal dashes OR spaces, which the older `.replace('-', os.sep)`
+       could not). Returns the candidate ONLY if its
+       `.claude/manifest.jsonl` exists. On success, also writes
+       origin.txt so subsequent calls hit step 1.
     3. Give up — return None. /projects still lists the project by slug name
        but the picker can't use it for context until next prep regenerates.
     """
@@ -78,16 +163,18 @@ def _read_project_path_from_manifest(memory_dir: Path) -> str | None:
             txt = origin.read_text(encoding="utf-8").strip()
             if txt and Path(txt).is_dir():
                 return txt
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug(
+                "origin.txt read failed for %s (will fall through "
+                "to filesystem walk): %s", slug_dir.name, e,
+            )
 
-    # 2. Reverse-engineer Windows-style slug
-    if len(slug) >= 3 and slug[1:3] == "--":
-        # `C--Foo-Bar` -> `C:\Foo\Bar`. Lossy if real path had dashes.
-        candidate = f"{slug[0]}:" + os.sep + slug[3:].replace("-", os.sep)
-        cp = Path(candidate)
-        if (cp / ".claude" / "manifest.jsonl").is_file():
-            return str(cp)
+    # 2. Walk the filesystem to disambiguate.
+    cp = _resolve_slug_filesystem_walk(slug)
+    if cp is not None and (cp / ".claude" / "manifest.jsonl").is_file():
+        real = str(cp)
+        _cache_origin_txt(slug_dir, real)
+        return real
 
     return None
 
