@@ -286,6 +286,47 @@ class OverlayButton(ctk.CTkToplevel):
         y = self.winfo_y() + _OVERLAY_H + 6
         picker.geometry(f"320x300+{x}+{y}")
 
+        # Dismiss on Escape and on click-outside so the picker doesn't
+        # stick around when the user clicks the underlying GUI or
+        # another window. Without these binds the borderless+topmost
+        # picker is un-closable except via its own Cancel button.
+        def _safe_destroy() -> None:
+            try:
+                picker.destroy()
+            except Exception:
+                pass
+
+        def _on_focus_out(_evt=None) -> None:
+            # Defer the focus check — when the user clicks an internal
+            # CTkButton, focus shifts from Toplevel to the button and
+            # FocusOut fires; we don't want to dismiss in that case.
+            def _check() -> None:
+                try:
+                    focused = picker.focus_displayof()
+                except Exception:
+                    focused = None
+                if focused is None:
+                    _safe_destroy()
+                    return
+                # Walk up the widget tree to see if the focused widget
+                # is a descendant of the picker. If yes, focus is still
+                # inside us — keep the picker open.
+                w = focused
+                while w is not None:
+                    if w is picker:
+                        return
+                    try:
+                        w = w.master
+                    except Exception:
+                        break
+                _safe_destroy()
+            picker.after(120, _check)
+
+        picker.bind("<Escape>", lambda _e: _safe_destroy())
+        picker.bind("<FocusOut>", _on_focus_out)
+        # Grab focus so Escape works and FocusOut becomes meaningful.
+        picker.after(50, lambda: (picker.focus_force(), picker.lift()))
+
         ctk.CTkLabel(
             picker, text="Pick project for context:",
             font=("Segoe UI", 11, "bold"), text_color=_C["fg2"],
