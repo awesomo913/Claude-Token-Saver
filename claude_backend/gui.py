@@ -557,18 +557,69 @@ class TokenSaverApp(ctk.CTk):
             logger.exception("Pending populate failed: %s", e)
 
         # Raise window to front so user sees Copy Prompt button.
+        self._force_to_foreground()
+
+        self._toast("Loaded prompt from external trigger", "success")
+        self._log(f"HTTP IPC: loaded prompt ({len(original)} chars)")
+
+    def _force_to_foreground(self) -> None:
+        """Robustly surface the GUI window. Combines Tk's lift+focus_force
+        with Win32 ShowWindow(SW_RESTORE) + SetForegroundWindow + a
+        keybd_event ALT-tickle to defeat LockSetForegroundWindow.
+
+        Plain `lift()` + `focus_force()` often only blinks the taskbar
+        when this process isn't already foreground — Windows' policy
+        prevents background processes from stealing focus. The ALT
+        keybd_event simulates a no-op user input which fools the policy
+        into treating us as foreground-eligible (documented Win32
+        workaround used by PowerToys, Slack, etc.). Pairs with
+        `AllowSetForegroundWindow(ASFW_ANY)` called by the overlay /
+        tray process before the pending file is written.
+        """
+        # Tk path first — covers non-Win32 and is harmless when the
+        # window is already up and focused.
         try:
             self.deiconify()
             self.lift()
             self.focus_force()
-            # Win32 hint to push above other windows
-            self.attributes("-topmost", True)
-            self.after(200, lambda: self.attributes("-topmost", False))
         except Exception as e:
-            logger.debug("Window raise failed: %s", e)
+            logger.debug("Tk raise failed: %s", e)
 
-        self._toast("Loaded prompt from external trigger", "success")
-        self._log(f"HTTP IPC: loaded prompt ({len(original)} chars)")
+        win32_ok = False
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                u32 = ctypes.windll.user32
+                # Resolve our top-level HWND (winfo_id is the inner
+                # drawable handle). GA_ROOT = 2 walks up to the
+                # owning Toplevel.
+                hwnd = int(u32.GetAncestor(int(self.winfo_id()), 2))
+                if hwnd and u32.IsWindow(hwnd):
+                    # ALT-tickle: press+release VK_MENU so Windows
+                    # treats us as foreground-eligible. Briefly visible
+                    # as a menu-bar highlight on the active app, but
+                    # negligible and well-documented.
+                    VK_MENU = 0x12
+                    KEYEVENTF_KEYUP = 0x0002
+                    u32.keybd_event(VK_MENU, 0, 0, 0)
+                    u32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+                    # SW_RESTORE = 9 (handles minimized/hidden).
+                    u32.ShowWindow(hwnd, 9)
+                    if u32.SetForegroundWindow(hwnd):
+                        u32.BringWindowToTop(hwnd)
+                        win32_ok = True
+            except Exception as e:
+                logger.debug("Win32 raise failed: %s", e)
+
+        # Topmost flash only if the Win32 path did NOT succeed —
+        # otherwise the window would briefly pin above other apps for
+        # 200ms even on a clean raise, which is visually disruptive.
+        if not win32_ok:
+            try:
+                self.attributes("-topmost", True)
+                self.after(200, lambda: self.attributes("-topmost", False))
+            except Exception:
+                pass
 
     def _on_bootstrap(self) -> None:
         if not self._project_path: self._toast("Load a project first", "warning"); return

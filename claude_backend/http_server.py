@@ -312,6 +312,27 @@ def write_pending(payload: dict) -> bool:
         return False
 
 
+def _allow_foreground_steal() -> None:
+    """Grant any process permission to call SetForegroundWindow.
+
+    The HTTP server runs in the tray process; the GUI is a separate
+    process. Windows blocks SetForegroundWindow from a non-foreground
+    process, which is why `lift() + focus_force()` from the GUI
+    sometimes only blinks the taskbar instead of surfacing the window.
+    Calling AllowSetForegroundWindow(ASFW_ANY) hands the foreground
+    privilege to whichever process tries to claim it next — typically
+    the GUI when it picks up the pending file. No-op on non-Windows
+    or when ctypes/user32 is unavailable.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ctypes.windll.user32.AllowSetForegroundWindow(-1)  # ASFW_ANY
+    except Exception as e:
+        logger.debug("AllowSetForegroundWindow failed: %s", e)
+
+
 def ensure_gui_running() -> bool:
     """If GUI not running, spawn it. Returns True if it should appear soon."""
     try:
@@ -444,6 +465,11 @@ class _Handler(BaseHTTPRequestHandler):
             "project_path": project_path,
             **result,
         })
+        # Belt-and-braces grant: even if the overlay process didn't
+        # call AllowSetForegroundWindow first (e.g. Chrome extension
+        # path), the tray process gets a chance here to permit the
+        # GUI to raise. Cheap no-op when the call has no effect.
+        _allow_foreground_steal()
         gui_ok = ensure_gui_running()
 
         result["builder_opened"] = gui_ok

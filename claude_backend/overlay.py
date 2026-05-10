@@ -39,6 +39,18 @@ try:
 except ImportError:
     pyautogui = None  # type: ignore[assignment]
 
+# Win32 user32 — used for picker positioning, foreground-window
+# save/restore around Ctrl+A+Ctrl+C macro, and AllowSetForegroundWindow
+# to grant the GUI process permission to raise. All calls are guarded
+# so non-Windows builds and missing-DLL paths degrade silently.
+try:
+    import ctypes
+    _user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    _WIN32_OK = True
+except (ImportError, OSError, AttributeError):
+    _user32 = None  # type: ignore[assignment]
+    _WIN32_OK = False
+
 from .prefs import Prefs
 
 logger = logging.getLogger(__name__)
@@ -53,6 +65,18 @@ _C = {
 
 _OVERLAY_W = 130
 _OVERLAY_H = 40
+
+# Project picker dimensions + edge clamp constants. The picker is a
+# borderless CTkToplevel anchored relative to the overlay; without
+# clamping it can render off-screen if the overlay is at a screen edge.
+_PICKER_W = 320
+_PICKER_H = 300
+_PICKER_GAP = 6        # gap between overlay and picker
+_SCREEN_MARGIN = 8     # min distance from any screen edge
+
+# Tightened HWND poll cadence so click-time foreground tracking doesn't
+# lag the user. Cheap — one ctypes call per tick.
+_FOREGROUND_POLL_MS = 150
 
 # v0.5 — auto-fade so the overlay isn't visually loud all the time.
 # The window is always-on-top (otherwise it's invisible behind whatever
@@ -79,6 +103,12 @@ class OverlayButton(ctk.CTkToplevel):
         self._last_proximity_ms = 0
         self._current_alpha = _FADE_ACTIVE_ALPHA
         self._fade_job: str | None = None
+        # Most recent foreground HWND that's NOT us — captured on every
+        # proximity poll tick so a click can restore focus to the
+        # window the user was actually typing in (e.g. Chrome) before
+        # firing the Ctrl+A+Ctrl+C macro. Without this the macro
+        # would hit our own borderless overlay window.
+        self._last_external_hwnd: int = 0
 
         self.title("Token Saver Overlay")
         self.overrideredirect(True)  # no titlebar / borders
@@ -213,17 +243,41 @@ class OverlayButton(ctk.CTkToplevel):
         return (dx * dx + dy * dy) <= (_FADE_PROXIMITY_PX * _FADE_PROXIMITY_PX)
 
     def _poll_proximity(self) -> None:
-        """Tick: restore alpha when cursor near, fade out after idle."""
+        """Tick: restore alpha when cursor near, fade out after idle.
+        Also tracks the foreground HWND so a subsequent click can
+        restore focus to the right window before firing Ctrl+A+Ctrl+C.
+        """
         now_ms = int(time.time() * 1000)
         if self._cursor_near():
             self._last_proximity_ms = now_ms
             self._set_alpha(_FADE_ACTIVE_ALPHA)
         elif now_ms - self._last_proximity_ms >= _FADE_DELAY_MS:
             self._set_alpha(_FADE_IDLE_ALPHA)
+
+        # Track foreground HWND. Skip our own root + any picker we
+        # might own so we don't save the overlay/picker as the
+        # "external" window the user was typing in.
+        if _WIN32_OK:
+            try:
+                fg = int(_user32.GetForegroundWindow())
+                # GA_ROOT = 2; resolve our Toplevel root because
+                # winfo_id() returns the inner Tk drawable handle.
+                my_root = int(_user32.GetAncestor(int(self.winfo_id()), 2))
+                if fg and fg != my_root:
+                    self._last_external_hwnd = fg
+            except Exception as e:
+                # Log but keep the poll alive — repeated user32
+                # failures point to a broken environment (DLL unloaded
+                # at session shutdown, etc.). Stale _last_external_hwnd
+                # would otherwise silently misroute Ctrl+A+Ctrl+C.
+                logger.debug("Foreground-HWND poll failed: %s", e)
+
         # Always reschedule — cancellation happens on widget destroy
         # via Tk's own cleanup of pending after() callbacks.
         try:
-            self._fade_job = self.after(_FADE_POLL_MS, self._poll_proximity)
+            self._fade_job = self.after(
+                _FOREGROUND_POLL_MS, self._poll_proximity,
+            )
         except tk.TclError:
             self._fade_job = None
 
@@ -239,10 +293,20 @@ class OverlayButton(ctk.CTkToplevel):
             logger.warning("Overlay click requires pyautogui + pyperclip")
             return
 
-        # Run capture+improve in a thread so the UI doesn't freeze.
-        threading.Thread(target=self._capture_and_improve, daemon=True).start()
+        # Snapshot the most-recent external foreground HWND on the Tk
+        # thread BEFORE the worker thread starts — by the time the worker
+        # runs Ctrl+A+Ctrl+C, the overlay has stolen focus and
+        # GetForegroundWindow() would return our own window.
+        target_hwnd = self._last_external_hwnd
 
-    def _capture_and_improve(self) -> None:
+        # Run capture+improve in a thread so the UI doesn't freeze.
+        threading.Thread(
+            target=self._capture_and_improve,
+            args=(target_hwnd,),
+            daemon=True,
+        ).start()
+
+    def _capture_and_improve(self, target_hwnd: int = 0) -> None:
         # Send Ctrl+A then Ctrl+C to focused window. Brief pause for the
         # OS to finish selection before reading clipboard.
         try:
@@ -252,6 +316,18 @@ class OverlayButton(ctk.CTkToplevel):
                 saved = pyperclip.paste()
             except Exception:
                 pass
+
+            # Restore foreground to the window the user was actually
+            # typing in. Without this the macro hits the overlay (which
+            # has nothing selectable) → empty clipboard → silent abort.
+            if _WIN32_OK and target_hwnd:
+                try:
+                    if _user32.IsWindow(target_hwnd):
+                        _user32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
+                        _user32.SetForegroundWindow(target_hwnd)
+                        time.sleep(0.08)  # let OS process focus change
+                except Exception as e:
+                    logger.debug("Foreground restore failed: %s", e)
 
             pyautogui.hotkey("ctrl", "a")
             time.sleep(0.05)
@@ -281,10 +357,35 @@ class OverlayButton(ctk.CTkToplevel):
         picker.attributes("-topmost", True)
         picker.configure(fg_color=_C["card"])
 
-        # Position below the overlay
-        x = self.winfo_x()
-        y = self.winfo_y() + _OVERLAY_H + 6
-        picker.geometry(f"320x300+{x}+{y}")
+        # Position below the overlay, clamped to screen bounds. Without
+        # clamping, an overlay near the screen edge produces a picker
+        # that renders partially or fully off-screen — the user sees the
+        # title only and can't pick a project. We prefer below-overlay,
+        # flip above when below would overflow, and clamp horizontally.
+        ox = self.winfo_x()
+        oy = self.winfo_y()
+        try:
+            sw = self.winfo_screenwidth()
+            sh = self.winfo_screenheight()
+        except Exception:
+            sw, sh = 1920, 1080  # safe fallback
+
+        # Vertical placement.
+        y_below = oy + _OVERLAY_H + _PICKER_GAP
+        if y_below + _PICKER_H + _SCREEN_MARGIN <= sh:
+            y = y_below
+        else:
+            y_above = oy - _PICKER_H - _PICKER_GAP
+            y = max(_SCREEN_MARGIN, y_above)
+            # If even above overflows (tiny screens), final clamp.
+            y = min(y, sh - _PICKER_H - _SCREEN_MARGIN)
+
+        # Horizontal placement: left-aligned with overlay, then clamp.
+        x = ox
+        x = min(x, sw - _PICKER_W - _SCREEN_MARGIN)
+        x = max(_SCREEN_MARGIN, x)
+
+        picker.geometry(f"{_PICKER_W}x{_PICKER_H}+{x}+{y}")
 
         # Dismiss on Escape and on click-outside so the picker doesn't
         # stick around when the user clicks the underlying GUI or
@@ -387,7 +488,16 @@ class OverlayButton(ctk.CTkToplevel):
     def _post_improve(
         self, prompt: str, project_path: str, saved_clipboard: str,
     ) -> None:
-        """POST to /improve. The GUI picks up the result via pending file."""
+        """POST to /improve. The GUI picks up the result via pending file.
+
+        We deliberately do NOT call AllowSetForegroundWindow here even
+        though the overlay process is foreground-eligible. The grant is
+        time-limited by Windows (expires on next user input, ~1s), and
+        urlopen + the GUI's pending-file poll loop can take longer than
+        that. The tray's HTTP handler does the grant right before
+        spawning/signaling the GUI in http_server.py — that's the right
+        moment.
+        """
         try:
             body = json.dumps({
                 "prompt": prompt, "project_path": project_path,
