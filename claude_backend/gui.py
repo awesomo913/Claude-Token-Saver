@@ -204,6 +204,7 @@ class TokenSaverApp(ctk.CTk):
         self._auto_scan_interval = 10 * 60 * 1000  # 10 minutes in ms
         self._prefs = Prefs.load()
         self._welcome_dlg: Optional[ctk.CTkToplevel] = None
+        self._settings_refresh_id: Optional[str] = None
 
         self._build_ui()
         self._show_view("dashboard")
@@ -298,6 +299,13 @@ class TokenSaverApp(ctk.CTk):
                 self._al_refresh_status()
             if hasattr(self, "_bk_status_lbl"):
                 self._refresh_backend_statuses()
+            # Schedule periodic refresh so status labels stay live while
+            # the user is on Settings — picks up subprocess state changes
+            # (overlay/tray/hotkey starting or dying) without manual switch.
+            self._schedule_settings_refresh()
+        else:
+            # Cancel periodic refresh when leaving Settings.
+            self._cancel_settings_refresh()
 
     def _open_welcome(self) -> None:
         """Open welcome dialog. Reuses existing window if already open."""
@@ -2553,6 +2561,41 @@ class TokenSaverApp(ctk.CTk):
         self._refresh_autostart_status()
 
     # ── HTTP backend / browser ext / overlay / hotkey status ─────────
+
+    def _schedule_settings_refresh(self) -> None:
+        """Re-run backend status checks every 3s while Settings is visible.
+
+        Catches subprocess state changes (overlay/hotkey starting up after
+        the user clicked a toggle) without requiring tab switches. Cancelled
+        the moment the user leaves Settings to avoid wasted polls.
+        """
+        # Cancel any prior scheduled refresh first to avoid duplicates.
+        self._cancel_settings_refresh()
+
+        def _tick() -> None:
+            try:
+                if hasattr(self, "_bk_status_lbl"):
+                    self._refresh_backend_statuses()
+            except Exception as e:
+                logger.debug("Settings refresh tick failed: %s", e)
+            # Re-arm only if Settings is still the active view.
+            current = next(
+                (k for k, v in self._views.items() if v.winfo_ismapped()),
+                None,
+            )
+            if current == "settings":
+                self._settings_refresh_id = self.after(3000, _tick)
+
+        self._settings_refresh_id = self.after(3000, _tick)
+
+    def _cancel_settings_refresh(self) -> None:
+        """Stop the periodic refresh tick if it's scheduled."""
+        if self._settings_refresh_id is not None:
+            try:
+                self.after_cancel(self._settings_refresh_id)
+            except Exception:
+                pass
+            self._settings_refresh_id = None
 
     def _refresh_backend_statuses(self) -> None:
         """Update HTTP / overlay / hotkey status labels in Settings."""
