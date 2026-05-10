@@ -88,7 +88,12 @@ def _exe_mtime() -> float:
 
 def _kill_running() -> int:
     """Stop every ClaudeTokenSaver.exe instance so PyInstaller can
-    overwrite the shipped binary. Returns the count killed."""
+    overwrite the shipped binary. Returns the count killed.
+
+    Logs (rather than silently swallows) the rare cases where taskkill
+    isn't on PATH or denies access — those failures matter because the
+    build will fail later with an opaque file-lock error instead of a
+    clean diagnostic."""
     count = 0
     if not sys.platform.startswith("win"):
         return count
@@ -101,16 +106,33 @@ def _kill_running() -> int:
             for line in proc.stdout.splitlines():
                 if "SUCCESS" in line.upper():
                     count += 1
-    except Exception:  # noqa: BLE001
-        pass
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+        print(
+            f"[ensure_exe_current] WARN: _kill_running failed: {e}",
+            file=sys.stderr,
+        )
     return count
 
 
+# Hard cap so a hung PyInstaller (file lock, antivirus, network share)
+# can't keep the post-commit background process alive forever.
+_BUILD_TIMEOUT_SEC = 600
+
+
 def _build() -> int:
-    """Invoke build_exe.py at repo root. Returns its exit code."""
+    """Invoke build_exe.py at repo root. Returns its exit code, or
+    a non-zero sentinel on timeout."""
     cmd = [sys.executable, str(ROOT / "build_exe.py")]
-    proc = subprocess.run(cmd, cwd=str(ROOT))
-    return int(proc.returncode)
+    try:
+        proc = subprocess.run(cmd, cwd=str(ROOT), timeout=_BUILD_TIMEOUT_SEC)
+        return int(proc.returncode)
+    except subprocess.TimeoutExpired:
+        print(
+            f"[ensure_exe_current] ERROR: build_exe.py exceeded "
+            f"{_BUILD_TIMEOUT_SEC}s — likely hung. Aborting.",
+            file=sys.stderr,
+        )
+        return 124   # POSIX timeout convention
 
 
 def _relaunch() -> None:
@@ -124,8 +146,11 @@ def _relaunch() -> None:
             cwd=str(DEPLOY_DIR),
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
-    except Exception:  # noqa: BLE001
-        pass
+    except (FileNotFoundError, OSError) as e:
+        print(
+            f"[ensure_exe_current] WARN: _relaunch failed: {e}",
+            file=sys.stderr,
+        )
 
 
 def main() -> int:
@@ -159,7 +184,12 @@ def main() -> int:
                 f"[ensure_exe_current] killed {n} running "
                 f"ClaudeTokenSaver.exe instance(s)"
             )
-            time.sleep(1)  # let Windows release the file lock
+            # Conservative wait so Windows fully releases the file
+            # handle before PyInstaller tries to overwrite it. 1s is
+            # usually enough but antivirus/handle flushes can take
+            # longer; 2s is a cheap insurance against an opaque
+            # access-denied build failure.
+            time.sleep(2)
 
     rc = _build()
     if rc != 0:
