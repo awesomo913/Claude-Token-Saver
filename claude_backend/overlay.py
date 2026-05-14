@@ -356,6 +356,14 @@ class OverlayButton(ctk.CTkToplevel):
         picker.overrideredirect(True)
         picker.attributes("-topmost", True)
         picker.configure(fg_color=_C["card"])
+        # Group picker with the overlay (not the hidden CTk root) so
+        # raise/focus calls don't bubble up the parent chain and
+        # surface the withdrawn root window as a maximized empty
+        # "CTk" frame.
+        try:
+            picker.transient(self)
+        except Exception:
+            pass
 
         # Position below the overlay, clamped to screen bounds. Without
         # clamping, an overlay near the screen edge produces a picker
@@ -425,27 +433,32 @@ class OverlayButton(ctk.CTkToplevel):
 
         picker.bind("<Escape>", lambda _e: _safe_destroy())
         picker.bind("<FocusOut>", _on_focus_out)
-        # Grab focus so Escape works and FocusOut becomes meaningful.
-        picker.after(50, lambda: (picker.focus_force(), picker.lift()))
+        # Use focus_set (soft) instead of focus_force (hard) — the
+        # latter walks up the Tk parent chain on Windows and can
+        # un-withdraw the hidden root window as a side effect. lift()
+        # raises Z-order of just the picker.
+        picker.after(50, lambda: (picker.focus_set(), picker.lift()))
 
         ctk.CTkLabel(
             picker, text="Pick project for context:",
             font=("Segoe UI", 11, "bold"), text_color=_C["fg2"],
         ).pack(anchor="w", padx=10, pady=(8, 4))
 
-        # Fetch projects via HTTP
-        projects: list[dict] = []
-        try:
-            r = urllib.request.urlopen(
-                f"http://127.0.0.1:{self._prefs.http_port}/projects", timeout=2,
-            )
-            data = json.loads(r.read())
-            projects = data.get("projects", [])
-        except Exception as e:
-            logger.warning("/projects fetch failed: %s", e)
-
         scroll = ctk.CTkScrollableFrame(picker, fg_color=_C["bg"], height=180)
         scroll.pack(fill="both", expand=True, padx=10, pady=(0, 4))
+
+        # Loading placeholder. /projects can take several seconds the
+        # first time (slug-walker filesystem scan) — previously this
+        # ran synchronously with a 2s timeout, producing an empty
+        # picker on cold cache. Now we render the picker immediately
+        # and stream the list in via after(0, ...) once the HTTP
+        # request returns. User can still hit "None — typo fix only"
+        # or Cancel without waiting.
+        loading_lbl = ctk.CTkLabel(
+            scroll, text="Loading projects...",
+            font=("Segoe UI", 10), text_color=_C["fg3"],
+        )
+        loading_lbl.pack(anchor="w", padx=6, pady=10)
 
         def _pick(path: str) -> None:
             picker.destroy()
@@ -455,21 +468,38 @@ class OverlayButton(ctk.CTkToplevel):
                 daemon=True,
             ).start()
 
-        for proj in projects:
-            ptitle = proj.get("name", proj.get("slug", "?"))
-            ppath = proj.get("path", "")
-            label = f"{ptitle}\n{ppath or '(path unrecoverable)'}"
-            b = ctk.CTkButton(
-                scroll, text=label, anchor="w",
-                font=("Segoe UI", 10),
-                fg_color=_C["bg"], hover_color=_C["border"],
-                text_color=_C["fg"],
-                state="normal" if ppath else "disabled",
-                command=lambda p=ppath: _pick(p),
-            )
-            b.pack(fill="x", pady=2)
+        def _populate(projects: list[dict]) -> None:
+            try:
+                if not picker.winfo_exists():
+                    return
+            except Exception:
+                return
+            try:
+                loading_lbl.destroy()
+            except Exception:
+                pass
+            if not projects:
+                ctk.CTkLabel(
+                    scroll, text="(no projects yet)",
+                    font=("Segoe UI", 10), text_color=_C["fg3"],
+                ).pack(anchor="w", padx=6, pady=10)
+                return
+            for proj in projects:
+                ptitle = proj.get("name", proj.get("slug", "?"))
+                ppath = proj.get("path", "")
+                label = f"{ptitle}\n{ppath or '(path unrecoverable)'}"
+                b = ctk.CTkButton(
+                    scroll, text=label, anchor="w",
+                    font=("Segoe UI", 10),
+                    fg_color=_C["bg"], hover_color=_C["border"],
+                    text_color=_C["fg"],
+                    state="normal" if ppath else "disabled",
+                    command=lambda p=ppath: _pick(p),
+                )
+                b.pack(fill="x", pady=2)
 
-        # None + Cancel
+        # None + Cancel — packed BEFORE the projects fetch so user can
+        # always dismiss while the list loads. Bottom row of picker.
         bottom = ctk.CTkFrame(picker, fg_color="transparent")
         bottom.pack(fill="x", padx=10, pady=(0, 8))
         ctk.CTkButton(
@@ -484,6 +514,28 @@ class OverlayButton(ctk.CTkToplevel):
             fg_color=_C["bg"], text_color=_C["fg2"],
             command=picker.destroy,
         ).pack(side="left")
+
+        # Background fetch — timeout generous since slug-walker can
+        # take several seconds on cold cache. Result lands on Tk main
+        # thread via picker.after(0, ...).
+        def _fetch() -> None:
+            projs: list[dict] = []
+            try:
+                r = urllib.request.urlopen(
+                    f"http://127.0.0.1:{self._prefs.http_port}/projects",
+                    timeout=8,
+                )
+                data = json.loads(r.read())
+                projs = data.get("projects", []) or []
+            except Exception as e:
+                logger.warning("/projects fetch failed: %s", e)
+            try:
+                picker.after(0, _populate, projs)
+            except Exception:
+                pass
+
+        threading.Thread(target=_fetch, daemon=True,
+                         name="ts_picker_fetch").start()
 
     def _post_improve(
         self, prompt: str, project_path: str, saved_clipboard: str,
@@ -544,8 +596,20 @@ def main() -> int:
     _lock = acquire_or_exit(_OVERLAY_INSTANCE_NAME)  # noqa: F841
 
     # Hidden root window — only exists to host the Toplevel overlay.
+    # Defense-in-depth so the root stays invisible even if some Tk
+    # action (focus_force on a child, etc.) un-withdraws it:
+    #   - tiny 1x1 geometry positioned off the visible area
+    #   - alpha 0 so it's transparent if it does surface
+    #   - tool-window flag suppresses the taskbar entry
+    #   - finally withdraw() to hide it normally
     root = ctk.CTk()
-    root.withdraw()  # Hide the root; only the overlay Toplevel is visible.
+    try:
+        root.geometry("1x1+-32000+-32000")
+        root.attributes("-alpha", 0.0)
+        root.attributes("-toolwindow", True)
+    except Exception:
+        pass
+    root.withdraw()
 
     OverlayButton(root)
     root.mainloop()

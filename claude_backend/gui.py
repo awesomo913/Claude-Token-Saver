@@ -595,16 +595,28 @@ class TokenSaverApp(ctk.CTk):
                 # owning Toplevel.
                 hwnd = int(u32.GetAncestor(int(self.winfo_id()), 2))
                 if hwnd and u32.IsWindow(hwnd):
-                    # ALT-tickle: press+release VK_MENU so Windows
-                    # treats us as foreground-eligible. Briefly visible
-                    # as a menu-bar highlight on the active app, but
-                    # negligible and well-documented.
-                    VK_MENU = 0x12
-                    KEYEVENTF_KEYUP = 0x0002
-                    u32.keybd_event(VK_MENU, 0, 0, 0)
-                    u32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
-                    # SW_RESTORE = 9 (handles minimized/hidden).
-                    u32.ShowWindow(hwnd, 9)
+                    # Decide window-state command BEFORE the tickle so
+                    # we don't disturb a maximized window. SW_RESTORE
+                    # un-maximizes — only OK when the window is
+                    # actually minimized. SW_SHOW is a safe no-op for
+                    # already-visible windows that just nudges Z-order.
+                    is_min = bool(u32.IsIconic(hwnd))
+                    needs_raise = is_min or not u32.IsWindowVisible(hwnd)
+
+                    if needs_raise:
+                        # ALT-tickle: press+release VK_MENU so Windows
+                        # treats us as foreground-eligible. Skipped when
+                        # the window is already visible+normal because
+                        # the tickle leaks to the focused app (Claude,
+                        # Chrome, etc.) as a phantom ALT keystroke.
+                        VK_MENU = 0x12
+                        KEYEVENTF_KEYUP = 0x0002
+                        u32.keybd_event(VK_MENU, 0, 0, 0)
+                        u32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+
+                    # SW_RESTORE = 9 (un-minimizes — DESTROYS maximize),
+                    # SW_SHOW = 5 (just makes visible, preserves state).
+                    u32.ShowWindow(hwnd, 9 if is_min else 5)
                     if u32.SetForegroundWindow(hwnd):
                         u32.BringWindowToTop(hwnd)
                         win32_ok = True
