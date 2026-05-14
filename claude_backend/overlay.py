@@ -472,12 +472,15 @@ class OverlayButton(ctk.CTkToplevel):
             try:
                 if not picker.winfo_exists():
                     return
-            except Exception:
+            except Exception as e:
+                logger.debug("picker winfo_exists check failed: %s", e)
                 return
             try:
                 loading_lbl.destroy()
-            except Exception:
-                pass
+            except Exception as e:
+                # Normal during picker teardown race; logged at debug
+                # so it isn't silent if it ever recurs at scale.
+                logger.debug("loading_lbl destroy failed: %s", e)
             if not projects:
                 ctk.CTkLabel(
                     scroll, text="(no projects yet)",
@@ -531,8 +534,12 @@ class OverlayButton(ctk.CTkToplevel):
                 logger.warning("/projects fetch failed: %s", e)
             try:
                 picker.after(0, _populate, projs)
-            except Exception:
-                pass
+            except Exception as e:
+                # picker.after() can raise TclError when the picker
+                # was destroyed before the fetch returned. Logged so
+                # any non-race TclError (interpreter shutdown, etc.)
+                # is observable.
+                logger.debug("picker.after schedule failed: %s", e)
 
         threading.Thread(target=_fetch, daemon=True,
                          name="ts_picker_fetch").start()
