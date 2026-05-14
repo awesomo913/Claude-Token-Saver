@@ -620,6 +620,17 @@ class TokenSaverApp(ctk.CTk):
                     if u32.SetForegroundWindow(hwnd):
                         u32.BringWindowToTop(hwnd)
                         win32_ok = True
+                    else:
+                        # SetForegroundWindow returning 0 usually means
+                        # the AllowSetForegroundWindow grant has
+                        # expired or never propagated to this process.
+                        # Log so a recurring foreground-grant problem
+                        # is observable instead of just falling
+                        # through to the topmost-flash silently.
+                        logger.info(
+                            "SetForegroundWindow refused (grant expired?) — "
+                            "falling back to topmost-flash",
+                        )
             except Exception as e:
                 logger.debug("Win32 raise failed: %s", e)
 
@@ -630,8 +641,8 @@ class TokenSaverApp(ctk.CTk):
             try:
                 self.attributes("-topmost", True)
                 self.after(200, lambda: self.attributes("-topmost", False))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("topmost-flash fallback failed: %s", e)
 
     def _on_bootstrap(self) -> None:
         if not self._project_path: self._toast("Load a project first", "warning"); return
