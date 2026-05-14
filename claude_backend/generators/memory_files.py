@@ -10,6 +10,16 @@ from ..types import ConventionReport, ModuleInfo, ProjectAnalysis
 logger = logging.getLogger(__name__)
 
 
+# v0.7.0 — files in this tuple are NEVER overwritten by
+# ``write_memory_files``. Use for hand-maintained context that
+# survives bootstrap regeneration (e.g. session_notes.md describing
+# recent feature work that the auto-generated reference files
+# can't capture).
+_PRESERVED_FILES: tuple[str, ...] = (
+    "session_notes.md",
+)
+
+
 def compute_project_slug(project_path: Path) -> str:
     """Compute the Claude Code project slug from an absolute path.
 
@@ -127,6 +137,12 @@ def write_memory_files(analysis: ProjectAnalysis) -> list[str]:
         target_dir.mkdir(parents=True, exist_ok=True)
         for filename, content in files.items():
             path = target_dir / filename
+            # v0.7.0 — never overwrite preserved files. Bootstrap
+            # regeneration must not clobber hand-maintained context
+            # like session_notes.md.
+            if filename in _PRESERVED_FILES and path.is_file():
+                logger.debug("preserved file kept: %s", path)
+                continue
             path.write_text(content, encoding="utf-8")
             written.append(str(path))
 
