@@ -224,6 +224,23 @@ class TokenSaverApp(ctk.CTk):
         # Watch the HTTP server's IPC pending file for incoming /improve calls.
         # When a payload appears, populate Builder and raise the window.
         self.after(1000, self._poll_pending_file)
+        # v0.7.0 — single-instance bring-to-front poll. When a
+        # duplicate launch detected the GUI mutex held, it wrote a
+        # raise-flag file; we surface our window in response.
+        self.after(1500, self._tick_single_instance_raise)
+
+    def _tick_single_instance_raise(self) -> None:
+        try:
+            from .single_instance import poll_bring_to_front_flag
+            poll_bring_to_front_flag(
+                "ClaudeTokenSaverGUI", self._force_to_foreground,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.debug("single-instance raise poll failed: %s", e)
+        try:
+            self.after(1500, self._tick_single_instance_raise)
+        except Exception:  # noqa: BLE001
+            pass
 
     # ── Skeleton ────────────────────────────────────────────────────────
     def _build_ui(self) -> None:

@@ -24,16 +24,23 @@ Usage:
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
 # Windows constant returned by GetLastError when CreateMutex finds an existing one.
 _ERROR_ALREADY_EXISTS = 183
+
+# v0.7.0 — module-global so the mutex handle isn't released early
+# by GC even if the caller drops their reference. Caller still SHOULD
+# keep the returned handle (documented), but this is belt-and-braces.
+_HELD_HANDLES: list[Any] = []
+_ATEXIT_REGISTERED: bool = False
 
 
 def _acquire_windows_mutex(name: str) -> tuple[bool, Any]:
@@ -67,10 +74,42 @@ def _acquire_windows_mutex(name: str) -> tuple[bool, Any]:
             # Another process owns it. Close our handle to avoid leak.
             kernel32.CloseHandle(handle)
             return False, None
+        # v0.7.0 — also retain a module-global ref so the mutex
+        # outlives careless callers + GC pressure during init.
+        _HELD_HANDLES.append(handle)
+        _register_atexit_release()
         return True, handle
     except Exception as e:
         logger.debug("Windows mutex path failed: %s", e)
         return False, None
+
+
+def _register_atexit_release() -> None:
+    """Idempotent — release mutexes on clean shutdown so an
+    immediate-restart scenario sees the slot free."""
+    global _ATEXIT_REGISTERED
+    if _ATEXIT_REGISTERED:
+        return
+    _ATEXIT_REGISTERED = True
+
+    def _release_all() -> None:
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            for h in _HELD_HANDLES:
+                try:
+                    kernel32.ReleaseMutex(h)
+                except Exception:
+                    pass
+                try:
+                    kernel32.CloseHandle(h)
+                except Exception:
+                    pass
+            _HELD_HANDLES.clear()
+        except Exception:
+            pass
+
+    atexit.register(_release_all)
 
 
 def _pidfile_path(name: str) -> Path:
@@ -109,6 +148,46 @@ def _acquire_pidfile(name: str) -> tuple[bool, Path | None]:
         return True, None
 
 
+# ---------- bring-to-front IPC (v0.7.0) ----------
+
+
+def _flag_path(name: str) -> Path:
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
+    return Path.home() / ".claude" / f"{safe}_raise.flag"
+
+
+def _request_bring_to_front(name: str) -> None:
+    """Write a tiny raise-flag file. Running instance polls for it
+    via ``poll_bring_to_front_flag`` and raises its window. Simpler
+    than WM_COPYDATA because CTk window class names aren't stable."""
+    try:
+        p = _flag_path(name)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(str(os.getpid()), encoding="utf-8")
+    except OSError as e:
+        logger.debug("could not write raise flag: %s", e)
+
+
+def poll_bring_to_front_flag(
+    name: str, callback: Callable[[], None],
+) -> bool:
+    """Called from the running instance's Tk after-loop (every ~1s).
+    If the flag file exists, delete it and invoke ``callback`` so the
+    GUI can raise its own window. Returns True when a raise fired."""
+    p = _flag_path(name)
+    if not p.is_file():
+        return False
+    try:
+        p.unlink()
+    except OSError:
+        pass
+    try:
+        callback()
+    except Exception:  # noqa: BLE001
+        logger.exception("bring-to-front callback failed")
+    return True
+
+
 def acquire_or_exit(name: str, exit_code: int = 0) -> Any:
     """Try to acquire a single-instance lock. Exit cleanly if already held.
 
@@ -136,15 +215,25 @@ def acquire_or_exit(name: str, exit_code: int = 0) -> Any:
             ok2, pidfile = _acquire_pidfile(name)
             if ok2:
                 return pidfile
-        # Either mutex existed (another instance) or pidfile says alive.
-        logger.info("Another instance of %s is already running; exiting.", name)
+        # v0.7.0 — request the running instance to surface its window,
+        # then exit. Replaces silent exit so double-launching doesn't
+        # feel broken to the user.
+        logger.info(
+            "Another instance of %s is already running; "
+            "requesting it to surface, then exiting.", name,
+        )
+        _request_bring_to_front(name)
         sys.exit(exit_code)
 
     # Non-Windows path.
     ok, pidfile = _acquire_pidfile(name)
     if ok:
         return pidfile
-    logger.info("Another instance of %s is already running; exiting.", name)
+    logger.info(
+        "Another instance of %s is already running; "
+        "requesting it to surface, then exiting.", name,
+    )
+    _request_bring_to_front(name)
     sys.exit(exit_code)
 
 
