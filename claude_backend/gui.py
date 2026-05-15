@@ -491,6 +491,52 @@ class TokenSaverApp(ctk.CTk):
         # Run initial scan FIRST, then start auto-scan timer after it completes
         self._on_scan(start_auto_after=True)
 
+    def _ensure_project_matches_field(self) -> bool:
+        """If the Project entry field path differs from `self._project_path`,
+        auto-load the entry path so action buttons (Bootstrap/Prep/Scan/
+        Clean) operate on the visible Project field instead of the
+        previously-loaded one.
+
+        Closes the UX trap where typing a new path into the field but
+        forgetting to click LOAD made Bootstrap silently re-bootstrap
+        the OLD project — the user reported "I bootstrapped but it
+        didn't show up in the picker".
+
+        Returns True if a valid project is loaded after the call,
+        False if the field is empty/invalid (and a toast was shown).
+        """
+        ps = self._d_path.get().strip()
+        if not ps:
+            if not self._project_path:
+                self._toast("Enter a project path first", "warning")
+                return False
+            return True  # blank field but a project is already loaded
+        p = Path(ps)
+        if not p.is_dir():
+            self._toast(f"Not a valid directory: {ps}", "error")
+            return False
+        resolved = p.resolve()
+        if (
+            self._project_path is not None
+            and resolved == self._project_path
+        ):
+            return True  # already loaded — no-op
+        # Field differs from loaded — surface that we're switching.
+        self._toast(
+            f"Switching project to {resolved.name}", "info",
+        )
+        self._project_path = resolved
+        self._config = load_config(project_path=self._project_path)
+        self._mgr = ClaudeContextManager(self._config)
+        self._session_mem.set_project(self._project_path)
+        self._st_proj.configure(text=str(self._project_path))
+        self._log(f"Loaded: {self._project_path.name} (auto)")
+        self._prefs.last_project_path = str(self._project_path)
+        self._prefs.save()
+        self._update_token_display()
+        self._update_recent()
+        return True
+
     def _auto_load_project(self, path: Path) -> None:
         """Auto-load a remembered project on startup (silent — no toast)."""
         try:
@@ -662,7 +708,7 @@ class TokenSaverApp(ctk.CTk):
                 logger.debug("topmost-flash fallback failed: %s", e)
 
     def _on_bootstrap(self) -> None:
-        if not self._project_path: self._toast("Load a project first", "warning"); return
+        if not self._ensure_project_matches_field(): return
         self._st_label.configure(text="Bootstrapping..."); self._log("Bootstrap started...")
         def do(): return self._mgr.bootstrap(self._project_path)
         def done(r):
@@ -676,7 +722,7 @@ class TokenSaverApp(ctk.CTk):
         self._run_async(do, done)
 
     def _on_prep(self) -> None:
-        if not self._project_path: self._toast("Load a project first", "warning"); return
+        if not self._ensure_project_matches_field(): return
         self._st_label.configure(text="Updating..."); self._log("Prep started...")
         def do(): return self._mgr.prep(self._project_path)
         def done(r):
@@ -690,7 +736,13 @@ class TokenSaverApp(ctk.CTk):
         self._run_async(do, done)
 
     def _on_scan(self, start_auto_after: bool = False) -> None:
-        if not self._project_path: self._toast("Load a project first", "warning"); return
+        # Skip the field-check when called as a chained step from
+        # _on_load / Bootstrap done callback — those already
+        # established self._project_path. We only enforce the
+        # field-match on direct user clicks.
+        if not self._project_path:
+            if not self._ensure_project_matches_field():
+                return
         self._st_label.configure(text="Scanning...")
         def do(): return self._mgr.analyze(self._project_path)
         def done(a):
@@ -705,7 +757,7 @@ class TokenSaverApp(ctk.CTk):
         self._run_async(do, done)
 
     def _on_clean(self) -> None:
-        if not self._project_path: return
+        if not self._ensure_project_matches_field(): return
         self._st_label.configure(text="Cleaning...")
         def do(): return self._mgr.clean(self._project_path)
         def done(rm):
