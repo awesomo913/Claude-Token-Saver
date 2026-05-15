@@ -200,31 +200,64 @@ def list_recent_projects(
     if not pdir.is_dir():
         return out
 
-    candidates: list[tuple[float, dict]] = []
+    # Slug-name substrings that mark non-user projects we should never
+    # surface (pytest scratch dirs, %TEMP% paths, etc). Filtering these
+    # at the cheap-stat stage avoids per-slug filesystem walks that
+    # blow the picker's HTTP timeout when ~/.claude/projects/ holds
+    # dozens of test residue dirs.
+    _SLUG_BLOCKLIST = (
+        "pytest-of-",
+        "-AppData-Local-Temp-",
+        "-AppData-Local-Temp",
+        "-Temp-pytest",
+    )
+
+    # Two-pass enumeration: cheap mtime collect first, then resolve
+    # paths only for the top-K most-recent candidates. Previously
+    # every slug got a filesystem walk via
+    # `_read_project_path_from_manifest`, which on ~60 pytest temp
+    # dirs took 8-12s — longer than the picker's HTTP timeout.
+    cheap: list[tuple[float, Path]] = []  # (mtime, slug_dir)
     for slug_dir in pdir.iterdir():
         if not slug_dir.is_dir():
+            continue
+        name = slug_dir.name
+        if any(s in name for s in _SLUG_BLOCKLIST):
             continue
         memory_dir = slug_dir / "memory"
         if not memory_dir.is_dir():
             continue
-        # Use memory dir mtime as recency signal
         try:
             mtime = memory_dir.stat().st_mtime
         except OSError:
             continue
+        cheap.append((mtime, slug_dir))
+
+    cheap.sort(key=lambda x: x[0], reverse=True)
+
+    # Resolve real paths only for the top candidates. 5x the requested
+    # limit gives slack for entries whose path resolution fails (we
+    # filter them out below); avoids resolving all 60 when we only
+    # need 5.
+    resolve_cap = max(limit * 5, 10)
+    candidates: list[tuple[float, dict]] = []
+    for mtime, slug_dir in cheap[:resolve_cap]:
+        memory_dir = slug_dir / "memory"
         project_path = _read_project_path_from_manifest(memory_dir) or ""
         if recovered_only and not project_path:
             continue
-        name = Path(project_path).name if project_path else slug_dir.name
+        proj_name = (
+            Path(project_path).name if project_path else slug_dir.name
+        )
         candidates.append((mtime, {
             "slug": slug_dir.name,
             "path": project_path,
-            "name": name,
-            "last_used_iso": datetime.fromtimestamp(mtime).isoformat(timespec="seconds"),
+            "name": proj_name,
+            "last_used_iso": datetime.fromtimestamp(
+                mtime,
+            ).isoformat(timespec="seconds"),
         }))
 
-    # Sort by mtime descending
-    candidates.sort(key=lambda x: x[0], reverse=True)
     out = [entry for _, entry in candidates[:limit]]
 
     # Pin last_project_path to the top if not already there
