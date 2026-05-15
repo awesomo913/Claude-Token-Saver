@@ -2,8 +2,9 @@
 shipped exe.
 
 Run after every git commit / pull / local edit to keep
-~/Desktop/ClaudeTokenSaver/ClaudeTokenSaver.exe in sync with the source
-tree without remembering to invoke `python build_exe.py` by hand.
+~/Desktop/My Apps/ClaudeTokenSaver/ClaudeTokenSaver.exe in sync with
+the source tree without remembering to invoke `python build_exe.py`
+by hand.
 
 Behaviour:
   - Walk every relevant source path (claude_backend/, ai/, classifier/,
@@ -38,7 +39,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 DESKTOP = Path.home() / "Desktop"
-DEPLOY_DIR = DESKTOP / "ClaudeTokenSaver"   # matches build_exe.py DEPLOY_TARGETS
+DEPLOY_DIR = DESKTOP / "My Apps" / "ClaudeTokenSaver"   # matches build_exe.py DEPLOY_TARGETS
 SHIPPED = DEPLOY_DIR / "ClaudeTokenSaver.exe"
 
 # Source paths whose mtime drives rebuild decisions. Keep narrow — adding

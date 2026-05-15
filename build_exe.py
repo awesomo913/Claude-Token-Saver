@@ -11,8 +11,13 @@ APP_NAME = "ClaudeTokenSaver"
 
 
 def _default_deploy_targets() -> list[Path]:
-    """Copy the built app to Desktop (Windows). Separate project: not GitHub App Installer."""
-    return [Path.home() / "Desktop" / APP_NAME]
+    """Deploy the --onedir build into the workspace-standard My Apps folder.
+
+    Per ~/.claude/rules/common/exe-packaging.md, Windows builds go to
+    ``~/Desktop/My Apps/<AppName>/`` (folder for --onedir) and the user
+    launches via ``~/Desktop/<AppName>.lnk`` shortcut into that folder.
+    """
+    return [Path.home() / "Desktop" / "My Apps" / APP_NAME]
 
 
 DEPLOY_TARGETS: list[Path] = _default_deploy_targets()

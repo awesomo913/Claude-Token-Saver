@@ -2646,7 +2646,7 @@ class TokenSaverApp(ctk.CTk):
 
     def _autostart_target_path(self) -> Path:
         """Where the deployed exe is expected. Used as the shortcut target."""
-        return Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+        return Path.home() / "Desktop" / "My Apps" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
 
     def _refresh_autostart_status(self) -> None:
         if not hasattr(self, "_as_status_lbl"):
@@ -2884,8 +2884,8 @@ class TokenSaverApp(ctk.CTk):
         if on:
             try:
                 import subprocess
-                exe_path = (Path.home() / "Desktop" / "ClaudeTokenSaver"
-                            / "ClaudeTokenSaver.exe")
+                exe_path = (Path.home() / "Desktop" / "My Apps"
+                            / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe")
                 if exe_path.is_file():
                     args = [str(exe_path), "--overlay"]
                 else:

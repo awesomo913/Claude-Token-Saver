@@ -113,7 +113,7 @@ def _spawn_overlay_subprocess() -> None:
     if sys.platform == "win32":
         creationflags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
 
-    exe_path = Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+    exe_path = Path.home() / "Desktop" / "My Apps" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
     if exe_path.is_file():
         # Pass --overlay flag so the launcher routes to overlay mode.
         args = [str(exe_path), "--overlay"]

@@ -232,7 +232,7 @@ def _run_doctor() -> int:
         ))
 
     # 5. Exe path (informational unless user expects it)
-    desktop_exe = Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+    desktop_exe = Path.home() / "Desktop" / "My Apps" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
     checks.append((
         "Desktop exe present",
         desktop_exe.is_file(),

@@ -39,7 +39,7 @@ _GUI_INSTANCE_NAME = "ClaudeTokenSaverGUI"
 # Where the deployed exe is expected to live. Used as primary launch target
 # when running from a frozen/installed environment. Falls back to running
 # the gui module from source if the exe path doesn't exist.
-_DEFAULT_EXE_PATH = Path.home() / "Desktop" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+_DEFAULT_EXE_PATH = Path.home() / "Desktop" / "My Apps" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
 
 
 def _find_exe() -> Path | None:
