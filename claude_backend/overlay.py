@@ -599,6 +599,15 @@ def main() -> int:
     """
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
+    # Best-effort cleanup of any stale raise-flag left behind by a
+    # previously-crashed overlay instance — otherwise we'd "raise" on
+    # boot for a launch attempt that happened long before we started.
+    from .single_instance import _flag_path
+    try:
+        _flag_path(_OVERLAY_INSTANCE_NAME).unlink(missing_ok=True)
+    except OSError as e:
+        logger.debug("stale overlay raise-flag cleanup failed: %s", e)
+
     from .single_instance import acquire_or_exit
     _lock = acquire_or_exit(_OVERLAY_INSTANCE_NAME)  # noqa: F841
 
@@ -618,7 +627,37 @@ def main() -> int:
         pass
     root.withdraw()
 
-    OverlayButton(root)
+    button = OverlayButton(root)
+
+    # Raise-flag poller — consumes ~/.claude/ClaudeTokenSaverOverlay_raise.flag
+    # written by `acquire_or_exit` when a duplicate `--overlay` launch is
+    # rejected. On flag, lift the floating button to the top and briefly
+    # toggle topmost so the user sees it move to foreground.
+    from .single_instance import poll_bring_to_front_flag
+
+    def _on_raise() -> None:
+        try:
+            button.lift()
+            button.attributes("-topmost", True)
+            # 200ms is enough for Windows to honor the topmost re-assert,
+            # short enough that the user perceives it as a single flash.
+            button.after(200, lambda: button.attributes("-topmost", False))
+        except Exception as e:
+            logger.debug("overlay raise failed: %s", e)
+
+    def _tick_raise() -> None:
+        try:
+            poll_bring_to_front_flag(_OVERLAY_INSTANCE_NAME, _on_raise)
+        except Exception as e:
+            logger.debug("overlay raise-flag poll failed: %s", e)
+        try:
+            root.after(1500, _tick_raise)
+        except Exception as e:
+            # TclError during teardown — loop ends naturally.
+            logger.debug("overlay raise-flag reschedule failed: %s", e)
+
+    root.after(1500, _tick_raise)
+
     root.mainloop()
     return 0
 

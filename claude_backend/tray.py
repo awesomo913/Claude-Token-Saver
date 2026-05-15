@@ -206,6 +206,11 @@ def build_menu() -> Menu:
 
 _TRAY_INSTANCE_NAME = "ClaudeTokenSaverTray"
 
+# How often the bring-to-front raise-flag poller wakes up. 1.5s matches
+# the GUI's own polling cadence (see gui.py:_tick_single_instance_raise)
+# so dup-launch feedback latency is consistent between modes.
+_RAISE_POLL_INTERVAL_SEC = 1.5
+
 
 def run() -> int:
     """Start tray icon. Blocks until user picks Quit.
@@ -218,6 +223,16 @@ def run() -> int:
     thread so the browser extension / overlay / hotkey can talk to us.
     """
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+
+    # Best-effort cleanup of any stale raise-flag left behind by a
+    # previously-crashed instance. Without this, a flag written before
+    # our process even existed would immediately trigger a spurious GUI
+    # launch on boot.
+    from .single_instance import _flag_path  # internal helper, OK locally
+    try:
+        _flag_path(_TRAY_INSTANCE_NAME).unlink(missing_ok=True)
+    except OSError as e:
+        logger.debug("stale raise-flag cleanup failed: %s", e)
 
     # Acquire single-instance lock. Held in `_lock` for process lifetime.
     from .single_instance import acquire_or_exit
@@ -314,6 +329,36 @@ def run() -> int:
                     pass
 
     threading.Thread(target=refresh_loop, daemon=True).start()
+
+    # Raise-flag poller — consumes ~/.claude/ClaudeTokenSaverTray_raise.flag
+    # written by `acquire_or_exit` when a duplicate `--tray` launch is
+    # rejected. On flag, open the GUI as the user-visible "raise" semantic
+    # (the tray icon itself has no window to surface). Without this loop
+    # the flag accumulates on disk and dup-launches feel like no-ops.
+    from .single_instance import poll_bring_to_front_flag
+
+    def _on_raise() -> None:
+        try:
+            _launch_gui(icon)
+        except Exception as e:
+            logger.warning("raise-flag GUI launch failed: %s", e)
+
+    def raise_flag_loop() -> None:
+        while True:
+            try:
+                time.sleep(_RAISE_POLL_INTERVAL_SEC)
+                poll_bring_to_front_flag(_TRAY_INSTANCE_NAME, _on_raise)
+            except Exception as e:
+                logger.debug("raise-flag poll iteration failed: %s", e)
+                # Brief backoff to avoid log spam if FS access is broken.
+                try:
+                    time.sleep(5)
+                except Exception:
+                    pass
+
+    threading.Thread(
+        target=raise_flag_loop, daemon=True, name="ts_raise_poller",
+    ).start()
 
     icon.run()
     return 0
