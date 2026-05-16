@@ -619,11 +619,37 @@ class TokenSaverApp(ctk.CTk):
         except Exception as e:
             logger.exception("Pending populate failed: %s", e)
 
+        # If the HTTP server auto-injected snippets, surface its pre-built
+        # prompt directly in the preview so the user actually sees the
+        # added code. _update_preview re-runs locally on any subsequent
+        # user input, which is the right behavior — this is a one-shot
+        # "here's what /improve produced" display.
+        injected_n = int(payload.get("injected_snippets") or 0)
+        injected_t = int(payload.get("injected_tokens") or 0)
+        server_prompt = str(payload.get("improved_prompt") or "")
+        if injected_n > 0 and server_prompt:
+            try:
+                self._preview.configure(state="normal")
+                self._preview.delete("1.0", "end")
+                self._preview.insert("1.0", server_prompt)
+                self._preview.configure(state="disabled")
+            except Exception as e:
+                logger.debug("Preview override failed: %s", e)
+
         # Raise window to front so user sees Copy Prompt button.
         self._force_to_foreground()
 
-        self._toast("Loaded prompt from external trigger", "success")
-        self._log(f"HTTP IPC: loaded prompt ({len(original)} chars)")
+        if injected_n > 0:
+            self._toast(
+                f"Auto-pulled {injected_n} snippet(s) ({injected_t} tokens)",
+                "success",
+            )
+        else:
+            self._toast("Loaded prompt from external trigger", "success")
+        self._log(
+            f"HTTP IPC: loaded prompt ({len(original)} chars); "
+            f"injected_snippets={injected_n} tokens={injected_t}"
+        )
 
     def _force_to_foreground(self) -> None:
         """Robustly surface the GUI window. Combines Tk's lift+focus_force

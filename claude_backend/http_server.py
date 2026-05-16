@@ -288,6 +288,67 @@ def list_recent_projects(
 
 # ── Improve pipeline ────────────────────────────────────────────────
 
+_IMPROVE_SNIPPET_TOP_K = 3
+_IMPROVE_SNIPPET_TOKEN_BUDGET = 800
+
+
+def _gather_snippet_context(
+    project_path: str, query: str,
+) -> tuple[str, int, int]:
+    """Search the project's snippet library, format top matches as code_context.
+
+    Returns (code_context, injected_blocks, injected_tokens). All zeros if
+    the library is absent or no match clears the search threshold.
+    """
+    if not project_path:
+        return "", 0, 0
+    try:
+        from .generators.snippet_library import load_snippet_library
+        from .search import smart_search
+        from .tokenizer import count_tokens
+    except Exception as e:
+        logger.warning("snippet imports failed: %s", e)
+        return "", 0, 0
+
+    base = Path(project_path) / ".claude" / "snippets"
+    try:
+        blocks = load_snippet_library(base)
+    except Exception as e:
+        logger.warning("load_snippet_library failed for %s: %s", base, e)
+        return "", 0, 0
+    if not blocks:
+        return "", 0, 0
+
+    try:
+        ranked = smart_search(blocks, query, max_results=_IMPROVE_SNIPPET_TOP_K)
+    except Exception as e:
+        logger.warning("smart_search failed: %s", e)
+        return "", 0, 0
+    if not ranked:
+        return "", 0, 0
+
+    sections: list[str] = []
+    injected_blocks = 0
+    injected_tokens = 0
+    for _score, block in ranked:
+        header = f"# From: {block.file_path}:{block.start_line}"
+        section = f"{header}\n{block.source}"
+        try:
+            section_tokens = count_tokens(section)
+        except Exception as e:
+            logger.warning(
+                "count_tokens failed for snippet %s, skipping: %s", block.name, e,
+            )
+            continue
+        if injected_tokens + section_tokens > _IMPROVE_SNIPPET_TOKEN_BUDGET:
+            continue
+        sections.append(section)
+        injected_blocks += 1
+        injected_tokens += section_tokens
+
+    return "\n\n".join(sections), injected_blocks, injected_tokens
+
+
 def run_improve_pipeline(
     prompt: str, project_path: str = "", intent_hint: str = "",
 ) -> dict:
@@ -303,7 +364,6 @@ def run_improve_pipeline(
     cleaned = clean_request(prompt)
 
     # Pull project conventions if a project was picked.
-    code_context = ""
     project_conventions = ""
     if project_path:
         pp = Path(project_path)
@@ -314,6 +374,10 @@ def run_improve_pipeline(
             except OSError:
                 pass
 
+    code_context, injected_blocks, injected_tokens = _gather_snippet_context(
+        project_path, cleaned,
+    )
+
     intent = intent_hint or detect_intent(cleaned)
     improved = build_smart_prompt(
         request=cleaned,
@@ -322,6 +386,21 @@ def run_improve_pipeline(
     )
     review = review_prompt(prompt, improved)
 
+    # Each injected snippet is code Claude would otherwise have to
+    # regenerate from scratch, so cost ≈ savings.
+    if project_path:
+        try:
+            from .tracker import TokenTracker
+            TokenTracker().record(
+                operation="improve",
+                tokens=injected_tokens,
+                project=Path(project_path).name,
+                detail=f"snippets={injected_blocks} intent={intent}",
+                tokens_avoided=injected_tokens,
+            )
+        except Exception as e:
+            logger.warning("token tracker record failed: %s", e)
+
     return {
         "improved_prompt": improved,
         "original_tokens": count_tokens(prompt),
@@ -329,6 +408,8 @@ def run_improve_pipeline(
         "intent": intent,
         "expansion_ratio": review["expansion_ratio"],
         "impact": review["impact"],
+        "injected_snippets": injected_blocks,
+        "injected_tokens": injected_tokens,
     }
 
 

@@ -4,11 +4,18 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Serialize ledger reads + appends across TokenTracker instances. /improve
+# runs under ThreadingHTTPServer, so two concurrent requests can race on
+# open("a") of ~/.claude/token_savings.jsonl — on Windows that surfaces as
+# PermissionError and the event silently drops.
+_LEDGER_LOCK = threading.Lock()
 
 
 def _now() -> str:
@@ -30,22 +37,24 @@ class TokenTracker:
     def _load(self) -> None:
         if not self.path.is_file():
             return
-        try:
-            for line in self.path.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line:
-                    self._events.append(json.loads(line))
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning("Failed to load token tracker: %s", e)
+        with _LEDGER_LOCK:
+            try:
+                for line in self.path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line:
+                        self._events.append(json.loads(line))
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("Failed to load token tracker: %s", e)
 
     def _append(self, event: dict) -> None:
         self._events.append(event)
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(event, ensure_ascii=False) + "\n")
-        except OSError as e:
-            logger.warning("Failed to write token event: %s", e)
+        with _LEDGER_LOCK:
+            try:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                with self.path.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(event, ensure_ascii=False) + "\n")
+            except OSError as e:
+                logger.error("Failed to write token event: %s", e)
 
     def record(
         self,

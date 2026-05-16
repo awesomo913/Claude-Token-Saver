@@ -55,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
     # doctor — audits installation health (settings.json, prefs, exe, hooks, shortcut)
     sub.add_parser("doctor", help="Audit Token Saver installation health")
 
+    # savings — show token-savings ledger from ~/.claude/token_savings.jsonl
+    p_save = sub.add_parser("savings", help="Show token-savings ledger")
+    p_save.add_argument("--project", default="", help="Filter to one project name")
+    p_save.add_argument("--limit", type=int, default=20, help="Recent events to show")
+
     args = parser.parse_args(argv)
 
     # Configure logging
@@ -73,6 +78,13 @@ def main(argv: list[str] | None = None) -> int:
     # doctor: same — no project, no config needed
     if args.command == "doctor":
         return _run_doctor()
+
+    # savings: read-only ledger view, no project/config needed
+    if args.command == "savings":
+        return _run_savings(
+            project_filter=args.project,
+            limit=args.limit,
+        )
 
     # Load config
     config = load_config(
@@ -338,6 +350,19 @@ def _run_doctor() -> int:
         sep = " -- " if note else ""
         print(f"  {mark}{label}{sep}{note}")
 
+    # Lifetime savings line (informational; never fails)
+    try:
+        from .tracker import TokenTracker
+        tracker = TokenTracker()
+        total = tracker.get_all_time_total()
+        breakdown = tracker.get_operation_breakdown()
+        improve_n = breakdown.get("improve", 0)
+        ctx_n = breakdown.get("context_build", 0)
+        print(f"  [INFO] Lifetime savings -- {total} tokens "
+              f"(improve={improve_n}, context_build={ctx_n})")
+    except Exception as e:
+        print(f"  [INFO] Lifetime savings -- unavailable ({e})")
+
     print()
     if critical_fails == 0:
         if info_fails:
@@ -347,6 +372,47 @@ def _run_doctor() -> int:
         return 0
     print(f"{critical_fails} critical check(s) failed. See [FAIL] entries above.")
     return 1
+
+
+def _run_savings(project_filter: str = "", limit: int = 20) -> int:
+    """Print lifetime + recent token-savings ledger entries."""
+    from .tracker import TokenTracker
+
+    tracker = TokenTracker()
+    total = tracker.get_all_time_total()
+    breakdown = tracker.get_operation_breakdown(project=project_filter)
+    events = tracker.get_recent_events(limit=limit)
+    if project_filter:
+        events = [e for e in events if e.get("project") == project_filter]
+
+    print("\n=== Token Saver savings ===\n")
+    label = f"  Project: {project_filter}" if project_filter else "  All projects"
+    print(label)
+    if project_filter:
+        proj_total = tracker.get_project_total(project_filter)
+        print(f"  Lifetime tokens avoided: {proj_total}")
+    else:
+        print(f"  Lifetime tokens avoided: {total}")
+
+    if breakdown:
+        print("\n  By operation:")
+        for op, n in sorted(breakdown.items(), key=lambda x: -x[1]):
+            print(f"    {op:<16} {n}")
+
+    if not events:
+        print("\n  No events yet.")
+        return 0
+
+    print(f"\n  Recent events (last {len(events)}):")
+    print(f"    {'time':<25}  {'op':<14}  {'avoided':>8}  project")
+    for e in events:
+        ts = e.get("ts", "")[:19]
+        op = e.get("op", "")
+        avoided = e.get("tokens_avoided", e.get("tokens", 0))
+        proj = e.get("project", "")
+        print(f"    {ts:<25}  {op:<14}  {avoided:>8}  {proj}")
+    print()
+    return 0
 
 
 def _print_analysis(analysis) -> None:
