@@ -23,6 +23,7 @@ except ImportError:
 
 from .backend import ClaudeContextManager
 from .config import ScanConfig, load_config
+from .constants import SNIPPET_TOKEN_BUDGET, SNIPPET_TOP_K
 from .generators.memory_files import compute_project_slug, get_memory_dirs
 from .ollama_manager import OllamaManager, RECOMMENDED_MODELS
 from .prefs import Prefs
@@ -35,17 +36,46 @@ from .welcome import show_welcome
 
 logger = logging.getLogger(__name__)
 
-# ── Theme ────────────────────────────────────────────────────────────────
+# ── Theme (cool neutral base + cohesive accents) ─────────────────────────
+RZ = 12        # default card radius
+RZ_IN = 8      # inner rows / pills
+RZ_CHIP = 6    # badges / dense controls
+RZ_TINY = 5
+
 C = {
-    "bg": "#1a1a1a", "bg2": "#2d2d2d", "bg3": "#252525",
-    "card": "#212121", "input": "#1e1e1e", "hover": "#3d3d3d",
-    "fg": "#ffffff", "fg2": "#b0b0b0", "fg3": "#808080",
-    "border": "#404040", "accent": "#0078d4", "accent2": "#1a8ae8",
-    "ok": "#107c10", "warn": "#ff8c00", "err": "#e81123",
-    "purple": "#8e44ad", "sidebar": "#181818", "side_act": "#2a2a2a",
+    "bg": "#12141c",
+    "bg2": "#191d28",
+    "bg3": "#222836",
+    "card": "#1a2030",
+    "input": "#131822",
+    "hover": "#2c3348",
+    "fg": "#f1f5f9",
+    "fg2": "#94a3b8",
+    "fg3": "#64748b",
+    "code_fg": "#c7d7f0",
+    "border": "#2e364a",
+    "border_soft": "#232a3a",
+    "accent": "#3b82f6",
+    "accent2": "#60a5fa",
+    "accent_dark": "#1d4ed8",
+    "accent_muted": "#1e3a8a",
+    "ok": "#22c55e",
+    "ok_hover": "#4ade80",
+    "warn": "#f59e0b",
+    "warn_hover": "#fbbf24",
+    "err": "#ef4444",
+    "err_hover": "#f87171",
+    "purple": "#a78bfa",
+    "purple_hover": "#c4b5fd",
+    "sidebar": "#0c0e14",
+    "sidebar_line": "#1e293b",
+    "side_act": "#1e2538",
+    "nav_hover": "#252f45",
+    "bar_bg": "#161b27",
 }
 F = "Segoe UI"
 M = "Consolas"
+_TOAST_MS = 2400  # toast visible duration before slide-out
 
 TEMPLATES = {
     "Reference context": (
@@ -275,15 +305,25 @@ class TokenSaverApp(ctk.CTk):
         self._content = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
         self._content.pack(side="left", fill="both", expand=True)
 
-        bar = ctk.CTkFrame(self, height=28, fg_color=C["bg2"], corner_radius=0)
+        bar = ctk.CTkFrame(
+            self, height=36, fg_color=C["bar_bg"], corner_radius=0,
+            border_width=1, border_color=C["border_soft"],
+        )
         bar.pack(side="bottom", fill="x"); bar.pack_propagate(False)
+        # Backend state dot — green = HTTP up, red = down. Poll every 5s.
+        self._st_dot = ctk.CTkLabel(
+            bar, text="●", font=(F, 14, "bold"), text_color=C["fg3"],
+        )
+        self._st_dot.pack(side="left", padx=(12, 4))
         self._st_label = ctk.CTkLabel(bar, text="Ready", font=(F, 10), text_color=C["fg2"])
-        self._st_label.pack(side="left", padx=12)
+        self._st_label.pack(side="left", padx=4)
         self._st_proj = ctk.CTkLabel(bar, text="No project loaded", font=(F, 10), text_color=C["fg3"])
         self._st_proj.pack(side="right", padx=12)
+        self._refresh_status_dot()  # schedule self-renewing poll
 
         self._toast_lbl: Optional[ctk.CTkLabel] = None
         self._toast_id: Optional[str] = None
+        self._toast_anim_ids: list[str] = []
 
         self._views: dict[str, ctk.CTkFrame] = {}
         self._build_dashboard()
@@ -303,8 +343,21 @@ class TokenSaverApp(ctk.CTk):
         if name in self._views:
             self._views[name].pack(in_=self._content, fill="both", expand=True)
         for k, b in self._nav_btns.items():
-            b.configure(fg_color=C["side_act"] if k == name else "transparent",
-                        text_color=C["fg"] if k == name else C["fg2"])
+            if k == name:
+                b.configure(
+                    fg_color=C["accent_muted"], text_color=C["fg"],
+                    border_width=1, border_color=C["accent"],
+                    hover_color=C["accent_muted"],
+                )
+            else:
+                # Use sidebar color instead of "transparent" — keeps the
+                # border-color story consistent and avoids the
+                # CTkButton transparency error if border_width is ever set.
+                b.configure(
+                    fg_color=C["sidebar"], text_color=C["fg2"],
+                    border_width=0, border_color=C["sidebar"],
+                    hover_color=C["nav_hover"],
+                )
         # Refresh dynamic elements when switching to their tab
         if name == "builder" and self._snippets:
             self._rebuild_grab_buttons()
@@ -345,14 +398,110 @@ class TokenSaverApp(ctk.CTk):
             logger.exception("Failed to open welcome dialog")
             self._toast(f"Welcome dialog failed: {e}", "error")
 
+    def _toast_destroy_safe(self, w) -> None:
+        if w is None:
+            return
+        try:
+            w.destroy()
+        except Exception:
+            pass
+
+    def _cancel_toast_anim(self) -> None:
+        for aid in self._toast_anim_ids:
+            try:
+                self.after_cancel(aid)
+            except Exception:
+                pass
+        self._toast_anim_ids.clear()
+
+    def _toast_dismiss_out(self) -> None:
+        w = self._toast_lbl
+        self._toast_lbl = None
+        if self._toast_id:
+            try:
+                self.after_cancel(self._toast_id)
+            except Exception:
+                pass
+            self._toast_id = None
+        self._cancel_toast_anim()
+        if w is None or not w.winfo_exists():
+            return
+
+        def s1() -> None:
+            try:
+                w.place_configure(rely=0.924)
+                aid = self.after(42, s2)
+                self._toast_anim_ids.append(aid)
+            except Exception:
+                pass
+
+        def s2() -> None:
+            try:
+                w.place_configure(rely=1.04)
+                aid = self.after(58, lambda: self._toast_destroy_safe(w))
+                self._toast_anim_ids.append(aid)
+            except Exception:
+                pass
+
+        aid0 = self.after(12, s1)
+        self._toast_anim_ids.append(aid0)
+
     def _toast(self, msg: str, lv: str = "info") -> None:
-        cm = {"success": C["ok"], "warning": C["warn"], "error": C["err"], "info": C["accent"]}
-        if self._toast_lbl: self._toast_lbl.destroy()
-        if self._toast_id: self.after_cancel(self._toast_id)
-        self._toast_lbl = ctk.CTkLabel(self, text=msg, font=(F, 12), text_color="#fff",
-                                       fg_color=cm.get(lv, C["accent"]), corner_radius=8, padx=20, pady=8)
-        self._toast_lbl.place(relx=0.5, rely=0.94, anchor="center"); self._toast_lbl.lift()
-        self._toast_id = self.after(3500, lambda: self._toast_lbl.destroy() if self._toast_lbl else None)
+        cm = {"success": C["ok"], "warning": C["warn"], "error": C["err"],
+              "info": C["accent_dark"]}
+        self._cancel_toast_anim()
+        if self._toast_id:
+            try:
+                self.after_cancel(self._toast_id)
+            except Exception:
+                pass
+            self._toast_id = None
+        if self._toast_lbl:
+            self._toast_destroy_safe(self._toast_lbl)
+            self._toast_lbl = None
+        fg = cm.get(lv, C["accent"])
+        # CTkLabel in this customtkinter version does not accept border_*
+        # kwargs — the slight outline from cursor's design is dropped.
+        lbl = ctk.CTkLabel(
+            self, text=msg, font=(F, 13), text_color=C["fg"],
+            fg_color=fg, corner_radius=16, padx=28, pady=12,
+        )
+        self._toast_lbl = lbl
+        lbl.place(relx=0.5, rely=1.02, anchor="center")
+        lbl.lift()
+
+        def slide_in(step: int) -> None:
+            if self._toast_lbl is not lbl or not lbl.winfo_exists():
+                return
+            trail = [(1.01, 0), (0.972, 0), (0.935, 0)]
+            if step < len(trail):
+                lbl.place_configure(rely=trail[step][0])
+                aid = self.after(32, lambda s=step: slide_in(s + 1))
+                self._toast_anim_ids.append(aid)
+
+        slide_in(0)
+        self._toast_id = self.after(_TOAST_MS, self._toast_dismiss_out)
+
+    def _refresh_status_dot(self) -> None:
+        """Poll HTTP backend health; recolor the status-bar dot accordingly."""
+        try:
+            from .http_server import is_backend_alive
+            from .prefs import Prefs
+            port = Prefs.load().http_port
+            up = is_backend_alive(port)
+            self._st_dot.configure(text_color=C["ok"] if up else C["err"])
+        except Exception as e:
+            logger.debug("status-dot poll failed: %s", e)
+            try:
+                self._st_dot.configure(text_color=C["fg3"])
+            except Exception:
+                pass
+        # Re-arm every 5s. Cheap call, no big deal if it overlaps with
+        # window teardown — Tk after() is canceled on destroy.
+        try:
+            self.after(5000, self._refresh_status_dot)
+        except Exception:
+            pass
 
     def _run_async(self, fn, done=None, err=None) -> None:
         if self._busy: self._toast("Operation running...", "warning"); return
@@ -1475,6 +1624,44 @@ class TokenSaverApp(ctk.CTk):
         self.after(2000, lambda: setattr(self, '_copy_locked', False))
 
         mode = self._tmpl.get()
+
+        # Smart mode safety net: if the queue is still empty when the user
+        # hits Copy (e.g. typed quickly before _auto_find_dispatch fired, or
+        # _auto_find bailed because _snippets was unavailable at the time),
+        # do a synchronous auto-pull now so the copy actually saves tokens
+        # instead of shipping a bare request.
+        auto_pulled_n = 0
+        if (mode == "Smart (Recommended)" and not self._context_queue
+                and request and self._snippets):
+            try:
+                ranked = smart_search(
+                    self._snippets, request,
+                    max_results=SNIPPET_TOP_K, min_score=3.0,
+                )
+            except Exception as e:
+                logger.warning("smart_search failed in _copy_context: %s", e)
+                ranked = []
+            budget = 0
+            for _score, block in ranked:
+                try:
+                    tk = count_tokens(block.source)
+                except Exception as e:
+                    logger.warning("count_tokens failed for %s: %s", block.name, e)
+                    continue
+                if budget + tk > SNIPPET_TOKEN_BUDGET:
+                    continue
+                self._context_queue.append({
+                    "name": block.name, "source": block.file_path,
+                    "content": block.source, "_auto_pulled": True,
+                })
+                budget += tk
+                auto_pulled_n += 1
+            if auto_pulled_n:
+                self._render_queue()
+                self._toast(
+                    f"Auto-pulled {auto_pulled_n} snippet(s)", "info",
+                )
+
         if mode == "Smart (Recommended)":
             txt = self._assemble("smart")
         elif mode == "Raw (No Wrapping)":
@@ -1485,8 +1672,20 @@ class TokenSaverApp(ctk.CTk):
         tok = count_tokens(txt)
         self._copy_clip(txt, track=False)
         proj = self._project_path.name if self._project_path else ""
-        self._tracker.record("context_build", tok, project=proj,
-                             detail=f"mode={mode}, items={len(self._context_queue)}")
+        # tokens_avoided = sum of content tokens for ALL queue items (whether
+        # auto-pulled or manually added) — each one is code Claude doesn't
+        # have to regenerate from scratch. Never let a count_tokens failure
+        # silently skip the ledger event.
+        try:
+            avoided = sum(count_tokens(it["content"]) for it in self._context_queue)
+        except Exception as e:
+            logger.warning("tokens_avoided sum failed: %s", e)
+            avoided = 0
+        self._tracker.record(
+            "context_build", tok, project=proj,
+            detail=f"mode={mode}, items={len(self._context_queue)}, auto={auto_pulled_n}",
+            tokens_avoided=avoided,
+        )
         self._session_mem.record_clipboard_copy(mode, len(self._context_queue), tok)
         self._update_token_display()
 

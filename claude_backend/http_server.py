@@ -288,8 +288,7 @@ def list_recent_projects(
 
 # ── Improve pipeline ────────────────────────────────────────────────
 
-_IMPROVE_SNIPPET_TOP_K = 3
-_IMPROVE_SNIPPET_TOKEN_BUDGET = 800
+from .constants import SNIPPET_TOKEN_BUDGET, SNIPPET_TOP_K
 
 
 def _gather_snippet_context(
@@ -320,7 +319,7 @@ def _gather_snippet_context(
         return "", 0, 0
 
     try:
-        ranked = smart_search(blocks, query, max_results=_IMPROVE_SNIPPET_TOP_K)
+        ranked = smart_search(blocks, query, max_results=SNIPPET_TOP_K)
     except Exception as e:
         logger.warning("smart_search failed: %s", e)
         return "", 0, 0
@@ -340,7 +339,7 @@ def _gather_snippet_context(
                 "count_tokens failed for snippet %s, skipping: %s", block.name, e,
             )
             continue
-        if injected_tokens + section_tokens > _IMPROVE_SNIPPET_TOKEN_BUDGET:
+        if injected_tokens + section_tokens > SNIPPET_TOKEN_BUDGET:
             continue
         sections.append(section)
         injected_blocks += 1

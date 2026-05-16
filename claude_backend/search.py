@@ -56,23 +56,24 @@ FILE_DOMAINS: dict[str, str] = {
     "audio": "Audio",
 }
 
-# Colors for domain badges in the GUI
+# Colors for domain badges in the GUI — softened slate palette to match
+# the cool dark theme. Tailwind-ish hues that read well on the new bg.
 DOMAIN_COLORS: dict[str, str] = {
-    "Browser": "#e81123",
-    "Windows": "#ff8c00",
-    "AI Chat": "#0078d4",
-    "Sessions": "#8e44ad",
-    "Files": "#107c10",
-    "Config": "#107c10",
-    "Search": "#00b7c3",
-    "Tracking": "#00b7c3",
-    "Prompts": "#8e44ad",
-    "GUI": "#ff8c00",
-    "Analysis": "#808080",
-    "AI Models": "#0078d4",
-    "Game Mods": "#e81123",
-    "Tasks": "#ff8c00",
-    "Build": "#808080",
+    "Browser": "#f87171",
+    "Windows": "#fb923c",
+    "AI Chat": "#60a5fa",
+    "Sessions": "#c084fc",
+    "Files": "#4ade80",
+    "Config": "#2dd4bf",
+    "Search": "#38bdf8",
+    "Tracking": "#5eead4",
+    "Prompts": "#a78bfa",
+    "GUI": "#fcd34d",
+    "Analysis": "#94a3b8",
+    "AI Models": "#7dd3fc",
+    "Game Mods": "#f472b6",
+    "Tasks": "#fdba74",
+    "Build": "#cbd5e1",
 }
 
 
