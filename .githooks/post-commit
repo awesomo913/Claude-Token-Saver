@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Auto-rebuild ClaudeTokenSaver.exe in the background after every commit
-# so the shipped binary on Desktop/ClaudeTokenSaver/ tracks main without
-# manual rebuilds.
+# so the shipped binary on Desktop/My Apps/ClaudeTokenSaver/ tracks main
+# without manual rebuilds.
 #
 # Wire via:  git config core.hooksPath .githooks
 #

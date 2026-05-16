@@ -57,7 +57,7 @@ SAVINGS:       88% reduction per message
 ### Option A: Standalone EXE (no Python needed)
 1. Download `ClaudeTokenSaver_v4.5.zip` from [Releases](https://github.com/awesomo913/Claude-Token-Saver/releases) (or your current release on GitHub)
 2. Unzip, double-click `ClaudeTokenSaver.exe`  
-   *Building from source:* `py -3 build_exe.py` also copies the app folder to `Desktop\ClaudeTokenSaver` on Windows.
+   *Building from source:* `py -3 build_exe.py` also copies the app folder to `Desktop\My Apps\ClaudeTokenSaver` on Windows.
 
 ### Option B: Run from source
 ```bash
