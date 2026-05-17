@@ -1,4 +1,4 @@
-# From: session_manager.py:25
+# From: gemini_coder_web/session_manager.py:25
 
 @dataclass
 class Session:

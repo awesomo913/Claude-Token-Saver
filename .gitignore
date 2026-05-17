@@ -19,3 +19,10 @@ CLAUDE_MANIFEST.jsonl
 # Windows reserved name leak from shell redirects ('> nul' under git bash)
 /nul
 nul.txt
+
+# Auto-regenerated build / rebuild logs (one per post-commit hook fire)
+logs/post_commit_rebuild_*.log
+logs/rebuild_*.log
+
+# Scheduled-task runner lock (per-process, never useful to commit)
+.claude/scheduled_tasks.lock

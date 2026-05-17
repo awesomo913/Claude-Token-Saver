@@ -1,4 +1,4 @@
-# From: cdp_client.py:60
+# From: gemini_coder_web/cdp_client.py:60
 
 @dataclass
 class CDPSelectors:

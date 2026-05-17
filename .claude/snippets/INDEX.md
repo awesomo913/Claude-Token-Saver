@@ -6,16 +6,25 @@
 - [`get_profile`](utilities/get_profile.py) (from `ai_profiles.py:211`) -- Get a profile by name. Falls back to Custom if not found.
 - [`save_custom_profile`](utilities/save_custom_profile.py) (from `ai_profiles.py:228`) -- Save a custom profile to disk.
 - [`load_custom_profiles`](utilities/load_custom_profiles.py) (from `ai_profiles.py:251`) -- Load custom profiles from disk.
+- [`_sanitize_filename`](utilities/_sanitize_filename.py) (from `auto_save.py:13`) -- Make a string safe for use as a filename.
+- [`_looks_like_code`](utilities/_looks_like_code.py) (from `broadcast.py:39`) -- Check if response contains code markers. Returns False when the AI
 - [`engineer_prompt`](utilities/engineer_prompt.py) (from `broadcast.py:53`) -- Use Prompt Architect's engine to build a production-grade prompt.
+- [`stop`](utilities/stop.py) (from `broadcast.py:289`) -- Stop all broadcast loops.
+- [`_save_result`](utilities/_save_result.py) (from `broadcast.py:303`) -- Save an iteration's actual result to Downloads.
+- [`_smart_run_single`](utilities/_smart_run_single.py) (from `broadcast.py:591`) -- Send a prompt to a single session (used by smart routing).
+- [`_get_window_title`](utilities/_get_window_title.py) (from `browser_actions.py:48`) -- Read window title via Win32. Zero impact.
 - [`focus_window`](utilities/focus_window.py) (from `browser_actions.py:59`) -- Bring a window to the foreground.
 - [`get_window_rect`](utilities/get_window_rect.py) (from `browser_actions.py:75`) -- Get window position (left, top, right, bottom).
 - [`click_chat_input`](utilities/click_chat_input.py) (from `browser_actions.py:87`) -- Click on the AI chat input area using profile offsets.
 - [`type_prompt`](utilities/type_prompt.py) (from `browser_actions.py:111`) -- Type text into the focused input via clipboard paste.
 - [`send_message`](utilities/send_message.py) (from `browser_actions.py:131`) -- Send the message using the profile's send method.
 - [`wait_for_generation_done`](utilities/wait_for_generation_done.py) (from `browser_actions.py:151`) -- Wait for the AI to finish generating.
+- [`_is_terminal_window`](utilities/_is_terminal_window.py) (from `browser_actions.py:193`) -- Check if the window is a terminal (CMD, PowerShell, Windows Terminal).
 - [`send_prompt_phase`](utilities/send_prompt_phase.py) (from `browser_actions.py:344`) -- Phase 1: Focus window, click input, paste prompt, send. ~3-5 seconds of mouse use.
+- [`_extract_ai_response`](utilities/_extract_ai_response.py) (from `browser_actions.py:357`) -- Extract just the AI response from full page text.
 - [`read_response_phase`](utilities/read_response_phase.py) (from `browser_actions.py:400`) -- Phase 3: Focus window and read the response. ~3-5 seconds of mouse use.
 - [`send_prompt_and_get_response`](utilities/send_prompt_and_get_response.py) (from `browser_actions.py:413`) -- Full cycle: send -> wait -> read. Used when NOT using traffic controller.
+- [`_default_deploy_targets`](utilities/_default_deploy_targets.py) (from `build_exe.py:13`) -- Deploy the --onedir build into the workspace-standard My Apps folder.
 - [`get_cdp_port_for_corner`](utilities/get_cdp_port_for_corner.py) (from `cdp_client.py:55`) -- Get the CDP port assigned to a screen corner.
 - [`get_selectors_for_profile`](utilities/get_selectors_for_profile.py) (from `cdp_client.py:171`) -- Get CDP selectors for a given AI profile name.
 - [`discover_cdp_targets`](utilities/discover_cdp_targets.py) (from `cdp_client.py:555`) -- Query Chrome's /json endpoint to find all debuggable tabs.
@@ -26,12 +35,223 @@
 - [`is_chrome_running`](utilities/is_chrome_running.py) (from `cdp_client.py:976`) -- Check if Chrome is currently running.
 - [`kill_chrome`](utilities/kill_chrome.py) (from `cdp_client.py:989`) -- Kill all Chrome processes (needed to relaunch with CDP).
 - [`connect_to_ai_site`](utilities/connect_to_ai_site.py) (from `cdp_client.py:1003`) -- Find a browser tab matching the AI site and return a chat automation object.
+- [`connect`](utilities/connect.py) (from `cdp_client.py:195`) -- Open WebSocket connection to the CDP target.
+- [`disconnect`](utilities/disconnect.py) (from `cdp_client.py:209`) -- Close the WebSocket connection.
+- [`send_command`](utilities/send_command.py) (from `cdp_client.py:222`) -- Send a CDP command and wait for the result.
+- [`evaluate_js`](utilities/evaluate_js.py) (from `cdp_client.py:259`) -- Evaluate JavaScript in the page and return the result.
+- [`find_element`](utilities/find_element.py) (from `cdp_client.py:280`) -- Check if a DOM element matching the selector exists.
+- [`get_element_text`](utilities/get_element_text.py) (from `cdp_client.py:288`) -- Get the text content of an element.
+- [`get_all_elements_text`](utilities/get_all_elements_text.py) (from `cdp_client.py:302`) -- Get text content of ALL elements matching a selector.
+- [`click_element`](utilities/click_element.py) (from `cdp_client.py:316`) -- Click a DOM element by selector.
+- [`press_enter`](utilities/press_enter.py) (from `cdp_client.py:433`) -- Simulate pressing Enter on the focused element.
+- [`get_page_url`](utilities/get_page_url.py) (from `cdp_client.py:516`) -- Get the current page URL.
+- [`get_page_title`](utilities/get_page_title.py) (from `cdp_client.py:523`) -- Get the current page title.
+- [`scroll_to_bottom`](utilities/scroll_to_bottom.py) (from `cdp_client.py:530`) -- Scroll the page to the bottom (useful for chat views).
+- [`count_elements`](utilities/count_elements.py) (from `cdp_client.py:534`) -- Count how many elements match a selector.
+- [`read_last_response`](utilities/read_last_response.py) (from `cdp_client.py:795`) -- Read the text of the AI's most recent response.
+- [`send_and_read`](utilities/send_and_read.py) (from `cdp_client.py:829`) -- Full cycle: send prompt, wait for response, read it.
+- [`_check_loading`](utilities/_check_loading.py) (from `cdp_client.py:851`) -- Check if any loading indicator is present.
+- [`_check_stop_button`](utilities/_check_stop_button.py) (from `cdp_client.py:861`) -- Check if a stop/cancel generation button is present.
+- [`_get_latest_response_text`](utilities/_get_latest_response_text.py) (from `cdp_client.py:871`) -- Get the text of the LAST (newest) response for change detection.
+- [`_count_responses`](utilities/_count_responses.py) (from `cdp_client.py:896`) -- Count the number of response elements on the page.
+- [`_detect_ai_site`](utilities/_detect_ai_site.py) (from `cdp_test.py:27`) -- Detect which AI site a URL belongs to.
+- [`_neutralize_none_streams`](utilities/_neutralize_none_streams.py) (from `launch_token_saver.py:26`) -- Redirect None stdout/stderr (frozen --windowed) to a log file.
+- [`_is_tray_mode`](utilities/_is_tray_mode.py) (from `launch_token_saver.py:65`) -- Tray mode if --tray (or -t) anywhere in argv. Other args ignored.
+- [`_is_overlay_mode`](utilities/_is_overlay_mode.py) (from `launch_token_saver.py:70`) -- Overlay mode if --overlay anywhere in argv.
+- [`_log_crash`](utilities/_log_crash.py) (from `launch_token_saver.py:75`) -- Write traceback to ~/.claude/token_saver_crash.log. Best-effort.
+- [`create_session`](utilities/create_session.py) (from `session_manager.py:75`) -- Create a new session in the given corner.
+- [`configure_session`](utilities/configure_session.py) (from `session_manager.py:120`) -- Find/launch the browser window for a session.
+- [`start_session`](utilities/start_session.py) (from `session_manager.py:133`) -- Start executing the task queue for a session.
+- [`stop_session`](utilities/stop_session.py) (from `session_manager.py:149`) -- Stop a session's task executor.
+- [`remove_session`](utilities/remove_session.py) (from `session_manager.py:156`) -- Remove a session completely.
+- [`stop_all`](utilities/stop_all.py) (from `session_manager.py:175`) -- Emergency stop all sessions.
+- [`capture_window_for_session`](utilities/capture_window_for_session.py) (from `session_manager.py:184`) -- Assign a specific window handle to a session (from capture mode).
+- [`set_session_callbacks`](utilities/set_session_callbacks.py) (from `session_manager.py:197`) -- Wire UI callbacks to a session's executor.
+- [`classify`](utilities/classify.py) (from `smart_router.py:39`) -- Score the prompt and decide routing.
+- [`split`](utilities/split.py) (from `smart_router.py:43`) -- Break prompt into free_prompt + claude_prompt.
+- [`find_free_session`](utilities/find_free_session.py) (from `smart_router.py:47`) -- Pick the first session running a free AI profile.
+- [`find_claude_session`](utilities/find_claude_session.py) (from `smart_router.py:55`) -- Pick the first session running Claude.
+- [`inject_free_results`](utilities/inject_free_results.py) (from `smart_router.py:63`) -- Replace the {free_model_results} placeholder with actual output.
+- [`using_cdp`](utilities/using_cdp.py) (from `universal_client.py:132`) -- Whether this client is using CDP (vs pyautogui fallback).
+- [`_claim_hwnd`](utilities/_claim_hwnd.py) (from `universal_client.py:141`) -- Thread-safe hwnd claiming.
+- [`_release_hwnd`](utilities/_release_hwnd.py) (from `universal_client.py:150`) -- Thread-safe hwnd release.
+- [`_try_configure_cdp`](utilities/_try_configure_cdp.py) (from `universal_client.py:212`) -- Try to connect to the AI site via CDP.
+- [`configure_with_hwnd`](utilities/configure_with_hwnd.py) (from `universal_client.py:235`) -- Directly assign a window handle (from capture mode).
+- [`release_hwnd`](utilities/release_hwnd.py) (from `universal_client.py:267`) -- Release the claimed hwnd when session is removed.
+- [`update_settings`](utilities/update_settings.py) (from `universal_client.py:278`) -- Ignored — browser AI uses whatever model is loaded in the UI.
+- [`generate`](utilities/generate.py) (from `universal_client.py:290`) -- Generate a response by typing into the AI web chat.
+- [`_do_generate_pyautogui`](utilities/_do_generate_pyautogui.py) (from `universal_client.py:446`) -- Browser automation with defensive timeout (pyautogui).
+- [`test_connection`](utilities/test_connection.py) (from `universal_client.py:474`) -- Test that the AI window is accessible.
 - [`get_screen_size`](utilities/get_screen_size.py) (from `window_manager.py:40`) -- Get primary monitor resolution.
 - [`get_quarter_rect`](utilities/get_quarter_rect.py) (from `window_manager.py:51`) -- Get a 1/4 screen rectangle for a given corner.
 - [`find_windows_by_title`](utilities/find_windows_by_title.py) (from `window_manager.py:75`) -- Find ALL visible windows whose title contains the pattern (case-insensitive).
 - [`find_chrome_windows`](utilities/find_chrome_windows.py) (from `window_manager.py:105`) -- Backward compat: find Chrome windows.
 - [`move_window`](utilities/move_window.py) (from `window_manager.py:112`) -- Move and resize a window by its handle.
 - [`position_existing_window`](utilities/position_existing_window.py) (from `window_manager.py:127`) -- Reposition an existing window to a quarter of the screen.
+- [`find_and_position_window`](utilities/find_and_position_window.py) (from `window_manager.py:133`) -- Find a window by title pattern and move it to the given corner.
+- [`_find_browser_exe`](utilities/_find_browser_exe.py) (from `window_manager.py:169`) -- Find a browser executable on disk.
+- [`get_foreground_window`](utilities/get_foreground_window.py) (from `window_manager.py:270`) -- Get the currently focused/foreground window handle.
+- [`get_window_title`](utilities/get_window_title.py) (from `window_manager.py:283`) -- Get a window's title by handle.
+- [`capture_foreground_and_position`](utilities/capture_foreground_and_position.py) (from `window_manager.py:296`) -- Wait for user to click a window, then capture and position it.
+- [`list_candidate_windows`](utilities/list_candidate_windows.py) (from `window_manager.py:314`) -- List all visible windows that could be AI chat interfaces.
+- [`launch_chrome_to_gemini`](utilities/launch_chrome_to_gemini.py) (from `window_manager.py:356`) -- Legacy: launch Chrome to Gemini.
+- [`_score_signals`](utilities/_score_signals.py) (from `classifier/classifier.py:135`) -- Score keyword matches for a signal group.
+- [`_domain_adjustment`](utilities/_domain_adjustment.py) (from `classifier/classifier.py:153`) -- Adjust score based on domain detection. Positive = toward Claude.
+- [`_detect_domains`](utilities/_detect_domains.py) (from `classifier/classifier.py:166`) -- Return list of detected domain names.
+- [`_structural_complexity`](utilities/_structural_complexity.py) (from `classifier/classifier.py:174`) -- Heuristic scoring based on prompt structure (0.0–1.0).
+- [`_count_file_references`](utilities/_count_file_references.py) (from `classifier/classifier.py:201`) -- Count references to file paths in the prompt.
+- [`_extract_metadata`](utilities/_extract_metadata.py) (from `classifier/classifier.py:221`) -- Extract URLs, code languages, error patterns from prompt.
+- [`_estimate_tokens`](utilities/_estimate_tokens.py) (from `classifier/splitter.py:10`) -- Rough token estimate: ~4 chars per token for English.
+- [`split`](utilities/split.py) (from `classifier/splitter.py:21`) -- Decompose prompt into routed subtasks and build two output prompts.
+- [`_split_sentences`](utilities/_split_sentences.py) (from `classifier/splitter.py:80`) -- Split on sentence boundaries, preserving code blocks as single units.
+- [`_classify_sentences`](utilities/_classify_sentences.py) (from `classifier/splitter.py:108`) -- Classify each sentence independently.
+- [`_merge_consecutive`](utilities/_merge_consecutive.py) (from `classifier/splitter.py:123`) -- Merge consecutive subtasks with the same routing to avoid fragmentation.
+- [`_build_free_prompt`](utilities/_build_free_prompt.py) (from `classifier/splitter.py:143`) -- Assemble the prompt for free models from free subtasks.
+- [`_build_claude_prompt`](utilities/_build_claude_prompt.py) (from `classifier/splitter.py:151`) -- Assemble the Claude prompt, including a slot for free model results.
+- [`_find_pythonw`](utilities/_find_pythonw.py) (from `claude_backend/auto_inject.py:67`) -- Return path to pythonw.exe (Windows, no console) or fallback to python.
+- [`_build_prep_command`](utilities/_build_prep_command.py) (from `claude_backend/auto_inject.py:77`) -- Hook command that runs prep silently on session start.
+- [`_build_launcher_command`](utilities/_build_launcher_command.py) (from `claude_backend/auto_inject.py:86`) -- Hook command that runs session_launcher (reads prefs, decides what to do).
+- [`_atomic_write_text`](utilities/_atomic_write_text.py) (from `claude_backend/auto_inject.py:97`) -- Write `text` to `path` atomically: temp file + os.replace.
+- [`_prune_backups`](utilities/_prune_backups.py) (from `claude_backend/auto_inject.py:115`) -- Keep only the newest `keep` backups; unlink the rest. Best-effort.
+- [`_make_backup`](utilities/_make_backup.py) (from `claude_backend/auto_inject.py:132`) -- Timestamped copy of settings.json. Returns path on success, None on fail.
+- [`_load_settings`](utilities/_load_settings.py) (from `claude_backend/auto_inject.py:145`) -- Load + parse settings.json. Returns (data, error_msg).
+- [`_save_settings`](utilities/_save_settings.py) (from `claude_backend/auto_inject.py:159`) -- Backup, write atomically, prune old backups. Returns (ok, message).
+- [`_hook_matches`](utilities/_hook_matches.py) (from `claude_backend/auto_inject.py:177`) -- True if inner hook entry should be considered ours.
+- [`_filter_session_hooks`](utilities/_filter_session_hooks.py) (from `claude_backend/auto_inject.py:195`) -- Remove all inner hooks matching (hook_id, legacy_substr).
+- [`_check_hook`](utilities/_check_hook.py) (from `claude_backend/auto_inject.py:227`) -- Generic status check for any hook id under any Claude Code hook event.
+- [`_install_hook`](utilities/_install_hook.py) (from `claude_backend/auto_inject.py:256`) -- Install a hook under any Claude Code hook event; dedupes existing first.
+- [`_uninstall_hook`](utilities/_uninstall_hook.py) (from `claude_backend/auto_inject.py:303`) -- Remove a hook by id from any Claude Code hook event.
+- [`check_status`](utilities/check_status.py) (from `claude_backend/auto_inject.py:343`) -- Status of the prep hook.
+- [`install`](utilities/install.py) (from `claude_backend/auto_inject.py:348`) -- Install the prep hook. Deduplicates existing prep hooks first.
+- [`uninstall`](utilities/uninstall.py) (from `claude_backend/auto_inject.py:355`) -- Remove the prep hook.
+- [`check_launcher_status`](utilities/check_launcher_status.py) (from `claude_backend/auto_inject.py:362`) -- Status of the launcher hook.
+- [`install_launcher_hook`](utilities/install_launcher_hook.py) (from `claude_backend/auto_inject.py:367`) -- Install the launcher hook. Deduplicates existing launcher hooks first.
+- [`uninstall_launcher_hook`](utilities/uninstall_launcher_hook.py) (from `claude_backend/auto_inject.py:377`) -- Remove the launcher hook.
+- [`check_prompt_status`](utilities/check_prompt_status.py) (from `claude_backend/auto_inject.py:388`) -- Status of the UserPromptSubmit launcher hook.
+- [`install_prompt_hook`](utilities/install_prompt_hook.py) (from `claude_backend/auto_inject.py:395`) -- Install the UserPromptSubmit launcher. Dedupes existing first.
+- [`uninstall_prompt_hook`](utilities/uninstall_prompt_hook.py) (from `claude_backend/auto_inject.py:406`) -- Remove the UserPromptSubmit launcher hook.
+- [`analyze`](utilities/analyze.py) (from `claude_backend/backend.py:38`) -- Scan and analyze a project without generating anything.
+- [`bootstrap`](utilities/bootstrap.py) (from `claude_backend/backend.py:80`) -- Full scan + generate all context files.
+- [`status`](utilities/status.py) (from `claude_backend/backend.py:232`) -- Report what's generated and its freshness.
+- [`clean`](utilities/clean.py) (from `claude_backend/backend.py:258`) -- Remove generated artifacts.
+- [`_run_savings`](utilities/_run_savings.py) (from `claude_backend/cli.py:377`) -- Print lifetime + recent token-savings ledger entries.
+- [`_print_analysis`](utilities/_print_analysis.py) (from `claude_backend/cli.py:418`) -- Print a human-readable analysis report.
+- [`load_config`](utilities/load_config.py) (from `claude_backend/config.py:43`) -- Load config with layered defaults.
+- [`_load_json`](utilities/_load_json.py) (from `claude_backend/config.py:71`) -- Load a JSON config file, return empty dict on failure.
+- [`_dict_to_config`](utilities/_dict_to_config.py) (from `claude_backend/config.py:85`) -- Convert a dict to ScanConfig, ignoring unknown keys.
+- [`save_config_example`](utilities/save_config_example.py) (from `claude_backend/config.py:92`) -- Write a config example to disk.
+- [`_open_welcome`](utilities/_open_welcome.py) (from `claude_backend/gui.py:380`) -- Open welcome dialog. Reuses existing window if already open.
+- [`_refresh_status_dot`](utilities/_refresh_status_dot.py) (from `claude_backend/gui.py:485`) -- Poll HTTP backend health; recolor the status-bar dot accordingly.
+- [`_ensure_project_matches_field`](utilities/_ensure_project_matches_field.py) (from `claude_backend/gui.py:643`) -- If the Project entry field path differs from `self._project_path`,
+- [`_auto_load_project`](utilities/_auto_load_project.py) (from `claude_backend/gui.py:689`) -- Auto-load a remembered project on startup (silent — no toast).
+- [`_poll_pending_file`](utilities/_poll_pending_file.py) (from `claude_backend/gui.py:710`) -- Check for HTTP-driven improve requests every second.
+- [`_on_request_keyup`](utilities/_on_request_keyup.py) (from `claude_backend/gui.py:1127`) -- Debounced auto-find. Longer delay for bigger text to avoid mid-type firing.
+- [`_breakdown_large_request`](utilities/_breakdown_large_request.py) (from `claude_backend/gui.py:1212`) -- Break a large request into sub-tasks, search each, deduplicate.
+- [`_compress_if_needed`](utilities/_compress_if_needed.py) (from `claude_backend/gui.py:1253`) -- If queued code exceeds MAX_PROMPT_TOKENS, compress large blocks to signatures.
+- [`_smart_find`](utilities/_smart_find.py) (from `claude_backend/gui.py:1278`) -- Manual trigger: clear queue, re-search from scratch.
+- [`_rebuild_grab_buttons`](utilities/_rebuild_grab_buttons.py) (from `claude_backend/gui.py:1432`) -- Build Quick Grab buttons from detected domains.
+- [`_quick_grab`](utilities/_quick_grab.py) (from `claude_backend/gui.py:1469`) -- Add the top snippets from a domain to the context queue.
+- [`_clear_request`](utilities/_clear_request.py) (from `claude_backend/gui.py:1514`) -- Clear the request box, queue, and matches.
+- [`_set_request`](utilities/_set_request.py) (from `claude_backend/gui.py:1524`) -- Set the request box text from a quick-start button.
+- [`_get_request_text`](utilities/_get_request_text.py) (from `claude_backend/gui.py:1536`) -- Get the user's request from the request box.
+- [`_assemble`](utilities/_assemble.py) (from `claude_backend/gui.py:1543`) -- Assemble the final prompt.
+- [`_rebuild_domain_tabs`](utilities/_rebuild_domain_tabs.py) (from `claude_backend/gui.py:1741`) -- Rebuild domain filter tabs after scanning.
+- [`_start_auto_scan`](utilities/_start_auto_scan.py) (from `claude_backend/gui.py:1870`) -- Start the 5-minute auto-refresh cycle.
+- [`_auto_scan_tick`](utilities/_auto_scan_tick.py) (from `claude_backend/gui.py:1880`) -- Check for file changes, only do a full rescan if something changed.
+- [`_refresh_models`](utilities/_refresh_models.py) (from `claude_backend/gui.py:2533`) -- Refresh the installed model list and combo.
+- [`_begin_pull`](utilities/_begin_pull.py) (from `claude_backend/gui.py:2665`) -- Kick off the actual model pull. Caller must have already
+- [`_ai_refresh_status`](utilities/_ai_refresh_status.py) (from `claude_backend/gui.py:2739`) -- Check and display auto-inject install status.
+- [`_save_welcome_pref`](utilities/_save_welcome_pref.py) (from `claude_backend/gui.py:2790`) -- Persist 'show welcome on launch' checkbox state.
+- [`_al_refresh_status`](utilities/_al_refresh_status.py) (from `claude_backend/gui.py:2801`) -- Update auto-launch card status indicator + button states.
+- [`_al_toggle_main`](utilities/_al_toggle_main.py) (from `claude_backend/gui.py:2849`) -- Main toggle: persist pref, install/uninstall BOTH hooks (SessionStart
+- [`_al_toggle_minimized`](utilities/_al_toggle_minimized.py) (from `claude_backend/gui.py:2884`) -- Sub-toggle: persist 'open minimized to tray' preference.
+- [`_al_install`](utilities/_al_install.py) (from `claude_backend/gui.py:2893`) -- Manual install button — installs BOTH SessionStart + UserPromptSubmit.
+- [`_al_uninstall`](utilities/_al_uninstall.py) (from `claude_backend/gui.py:2914`) -- Manual uninstall button — removes BOTH hooks.
+- [`_autostart_shortcut_path`](utilities/_autostart_shortcut_path.py) (from `claude_backend/gui.py:2940`) -- Resolve %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\...
+- [`_autostart_target_path`](utilities/_autostart_target_path.py) (from `claude_backend/gui.py:2949`) -- Where the deployed exe is expected. Used as the shortcut target.
+- [`_repair_autostart`](utilities/_repair_autostart.py) (from `claude_backend/gui.py:2972`) -- Create or recreate the Startup shortcut pointing at current exe.
+- [`_repair_autostart_via_powershell`](utilities/_repair_autostart_via_powershell.py) (from `claude_backend/gui.py:3007`) -- PowerShell fallback for shortcut creation when pywin32 unavailable.
+- [`_remove_autostart`](utilities/_remove_autostart.py) (from `claude_backend/gui.py:3034`) -- Delete the Startup shortcut. Tray + auto-inject hook unaffected.
+- [`_schedule_settings_refresh`](utilities/_schedule_settings_refresh.py) (from `claude_backend/gui.py:3050`) -- Re-run backend status checks every 3s while Settings is visible.
+- [`_cancel_settings_refresh`](utilities/_cancel_settings_refresh.py) (from `claude_backend/gui.py:3076`) -- Stop the periodic refresh tick if it's scheduled.
+- [`_refresh_backend_statuses`](utilities/_refresh_backend_statuses.py) (from `claude_backend/gui.py:3085`) -- Kick off authoritative probes off the Tk main thread.
+- [`_apply_backend_status`](utilities/_apply_backend_status.py) (from `claude_backend/gui.py:3133`) -- Update status labels on the main thread from probe results.
+- [`_kill_processes_by_arg`](utilities/_kill_processes_by_arg.py) (from `claude_backend/gui.py:3177`) -- Kill every other-process whose argv contains `arg` exactly.
+- [`_spawn_tray`](utilities/_spawn_tray.py) (from `claude_backend/gui.py:3205`) -- Spawn a detached tray subprocess. Returns True on launch attempt.
+- [`_close_tray`](utilities/_close_tray.py) (from `claude_backend/gui.py:3226`) -- Kill any running --tray ClaudeTokenSaver process.
+- [`_relaunch_tray`](utilities/_relaunch_tray.py) (from `claude_backend/gui.py:3238`) -- Kill running tray + spawn a fresh one (picks up newest exe).
+- [`_summon_overlay`](utilities/_summon_overlay.py) (from `claude_backend/gui.py:3259`) -- Spawn overlay subprocess (or raise existing one via IPC).
+- [`_toggle_overlay`](utilities/_toggle_overlay.py) (from `claude_backend/gui.py:3279`) -- Persist pref, spawn/kill overlay subprocess to match.
+- [`_toggle_hotkey`](utilities/_toggle_hotkey.py) (from `claude_backend/gui.py:3312`) -- Persist pref, register/unregister hotkey IF we own a hotkey daemon
+- [`_apply_hotkey_combo`](utilities/_apply_hotkey_combo.py) (from `claude_backend/gui.py:3328`) -- Save typed combo to prefs.
+- [`_open_extension_folder`](utilities/_open_extension_folder.py) (from `claude_backend/gui.py:3340`) -- Open the bundled extension folder in Explorer.
+- [`_ai_show_tutorial`](utilities/_ai_show_tutorial.py) (from `claude_backend/gui.py:3369`) -- Toggle the Auto-Inject tutorial text.
+- [`start`](utilities/start.py) (from `claude_backend/hotkey.py:122`) -- Register the global hotkey. Returns True on success.
+- [`stop`](utilities/stop.py) (from `claude_backend/hotkey.py:183`) -- Unregister the hotkey. Idempotent.
+- [`is_running`](utilities/is_running.py) (from `claude_backend/hotkey.py:196`) -- True if hotkey is currently registered.
+- [`_claude_projects_dir`](utilities/_claude_projects_dir.py) (from `claude_backend/http_server.py:50`) -- Where Token Saver writes per-project memory files.
+- [`_resolve_slug_filesystem_walk`](utilities/_resolve_slug_filesystem_walk.py) (from `claude_backend/http_server.py:60`) -- Decode a Claude Code slug to a real path by walking the filesystem.
+- [`_walk_resolve`](utilities/_walk_resolve.py) (from `claude_backend/http_server.py:90`) -- Recursive helper for `_resolve_slug_filesystem_walk`.
+- [`_cache_origin_txt`](utilities/_cache_origin_txt.py) (from `claude_backend/http_server.py:118`) -- Write origin.txt for an existing slug that lacked one — so the
+- [`_read_project_path_from_manifest`](utilities/_read_project_path_from_manifest.py) (from `claude_backend/http_server.py:138`) -- Recover the original project root for a Token-Saver-bootstrapped slug.
+- [`write_pending`](utilities/write_pending.py) (from `claude_backend/http_server.py:419`) -- Write IPC payload for GUI to pick up. Atomic via os.replace.
+- [`_allow_foreground_steal`](utilities/_allow_foreground_steal.py) (from `claude_backend/http_server.py:432`) -- Grant any process permission to call SetForegroundWindow.
+- [`ensure_gui_running`](utilities/ensure_gui_running.py) (from `claude_backend/http_server.py:453`) -- If GUI not running, spawn it. Returns True if it should appear soon.
+- [`is_port_free`](utilities/is_port_free.py) (from `claude_backend/http_server.py:598`) -- Check whether 127.0.0.1:port is free for bind.
+- [`is_backend_alive`](utilities/is_backend_alive.py) (from `claude_backend/http_server.py:623`) -- Authoritative check: is OUR HTTP backend answering on port?
+- [`start_server`](utilities/start_server.py) (from `claude_backend/http_server.py:645`) -- Start HTTP server in a daemon thread. Idempotent.
+- [`stop_server`](utilities/stop_server.py) (from `claude_backend/http_server.py:673`) -- Shut down the running server. Mostly for tests / Quit.
+- [`is_running`](utilities/is_running.py) (from `claude_backend/http_server.py:686`) -- Quick check whether server thread is alive.
+- [`_load`](utilities/_load.py) (from `claude_backend/manifest.py:35`) -- Load existing manifest from disk.
+- [`save`](utilities/save.py) (from `claude_backend/manifest.py:54`) -- Write manifest to disk.
+- [`needs_update`](utilities/needs_update.py) (from `claude_backend/manifest.py:66`) -- Check if a generated file needs updating.
+- [`is_user_modified`](utilities/is_user_modified.py) (from `claude_backend/manifest.py:84`) -- Check if a generated file was modified by the user after generation.
+- [`record`](utilities/record.py) (from `claude_backend/manifest.py:94`) -- Record a generated file in the manifest.
+- [`_detect_quant`](utilities/_detect_quant.py) (from `claude_backend/ollama_manager.py:303`) -- Detect quantization from model name.
+- [`is_running`](utilities/is_running.py) (from `claude_backend/ollama_manager.py:51`) -- Check if Ollama server is reachable.
+- [`find_executable`](utilities/find_executable.py) (from `claude_backend/ollama_manager.py:59`) -- Locate the Ollama tray binary so we can auto-start the daemon.
+- [`start_daemon`](utilities/start_daemon.py) (from `claude_backend/ollama_manager.py:90`) -- Spawn the Ollama daemon if installed, and wait until reachable.
+- [`list_models`](utilities/list_models.py) (from `claude_backend/ollama_manager.py:136`) -- Get all locally installed models with metadata.
+- [`get_model_names`](utilities/get_model_names.py) (from `claude_backend/ollama_manager.py:162`) -- Just the names.
+- [`select_best`](utilities/select_best.py) (from `claude_backend/ollama_manager.py:168`) -- Auto-select the best small model for search assist.
+- [`pull_model`](utilities/pull_model.py) (from `claude_backend/ollama_manager.py:201`) -- Download a model in a background thread. Streams progress.
+- [`delete_model`](utilities/delete_model.py) (from `claude_backend/ollama_manager.py:239`) -- Delete a locally installed model.
+- [`interpret_query`](utilities/interpret_query.py) (from `claude_backend/ollama_manager.py:257`) -- Ask the current model to extract search keywords from sloppy English.
+- [`open_overlay`](utilities/open_overlay.py) (from `claude_backend/overlay.py:669`) -- Construct + return an overlay attached to `parent`.
+- [`_install_overlay_file_logger`](utilities/_install_overlay_file_logger.py) (from `claude_backend/overlay.py:679`) -- Mirror overlay's logger to ~/.claude/session-data/<date>/exe_Overlay.log.
+- [`_restore_position`](utilities/_restore_position.py) (from `claude_backend/overlay.py:139`) -- Get saved position or default to top-right of primary monitor.
+- [`_save_position`](utilities/_save_position.py) (from `claude_backend/overlay.py:151`) -- Persist current position to prefs.
+- [`_set_alpha`](utilities/_set_alpha.py) (from `claude_backend/overlay.py:217`) -- Set window translucency; clamped + cached so we don't pound
+- [`_cursor_near`](utilities/_cursor_near.py) (from `claude_backend/overlay.py:229`) -- True if the global mouse cursor is within FADE_PROXIMITY_PX
+- [`_poll_proximity`](utilities/_poll_proximity.py) (from `claude_backend/overlay.py:247`) -- Tick: restore alpha when cursor near, fade out after idle.
+- [`_post_improve`](utilities/_post_improve.py) (from `claude_backend/overlay.py:590`) -- POST to /improve. The GUI picks up the result via pending file.
+- [`_show_error_toast`](utilities/_show_error_toast.py) (from `claude_backend/overlay.py:635`) -- Tiny self-dismissing CTkToplevel near the overlay reporting failure.
+- [`load`](utilities/load.py) (from `claude_backend/prefs.py:59`) -- Load prefs. Missing file or bad JSON -> defaults.
+- [`save`](utilities/save.py) (from `claude_backend/prefs.py:80`) -- Persist prefs atomically. Returns True on success.
+- [`detect_intent`](utilities/detect_intent.py) (from `claude_backend/prompt_builder.py:65`) -- Detect what the user is trying to do from their request text.
+- [`build_smart_prompt`](utilities/build_smart_prompt.py) (from `claude_backend/prompt_builder.py:160`) -- Build a lean structured prompt from user request + code context.
+- [`review_prompt`](utilities/review_prompt.py) (from `claude_backend/prompt_builder.py:192`) -- Analyze the built prompt for token efficiency.
+- [`get_domain`](utilities/get_domain.py) (from `claude_backend/search.py:80`) -- Get the domain label for a code block based on its file path.
+- [`get_domain_color`](utilities/get_domain_color.py) (from `claude_backend/search.py:90`) -- Get the badge color for a domain.
+- [`get_all_domains`](utilities/get_all_domains.py) (from `claude_backend/search.py:95`) -- Get sorted list of unique domains present in the snippets.
+- [`_fix_typos`](utilities/_fix_typos.py) (from `claude_backend/search.py:160`) -- Fix common typos using the dictionary, plus SequenceMatcher for unknown ones.
+- [`_stem`](utilities/_stem.py) (from `claude_backend/search.py:288`) -- Cheap suffix-stripping stemmer. Not perfect, just good enough.
+- [`_fuzzy_match`](utilities/_fuzzy_match.py) (from `claude_backend/search.py:300`) -- Score 0.0-1.0 for how well query matches target.
+- [`_expand_query`](utilities/_expand_query.py) (from `claude_backend/search.py:322`) -- Turn a sloppy English query into expanded search terms.
+- [`smart_search`](utilities/smart_search.py) (from `claude_backend/search.py:567`) -- Search snippets with fuzzy matching, synonyms, and intent detection.
+- [`_find_exe`](utilities/_find_exe.py) (from `claude_backend/session_launcher.py:45`) -- Locate ClaudeTokenSaver.exe on disk. Prefer Desktop deploy.
+- [`_spawn_detached`](utilities/_spawn_detached.py) (from `claude_backend/session_launcher.py:53`) -- Spawn a detached subprocess so the hook can return immediately.
+- [`main`](utilities/main.py) (from `claude_backend/session_launcher.py:75`) -- Entry point. Always exits 0 to avoid blocking session start.
+- [`_acquire_windows_mutex`](utilities/_acquire_windows_mutex.py) (from `claude_backend/single_instance.py:46`) -- Try to create a named mutex. Returns (acquired, handle).
+- [`_register_atexit_release`](utilities/_register_atexit_release.py) (from `claude_backend/single_instance.py:87`) -- Idempotent — release mutexes on clean shutdown so an
+- [`_acquire_pidfile`](utilities/_acquire_pidfile.py) (from `claude_backend/single_instance.py:120`) -- PID lockfile fallback. Returns (acquired, pidfile_path).
+- [`_request_bring_to_front`](utilities/_request_bring_to_front.py) (from `claude_backend/single_instance.py:159`) -- Write a tiny raise-flag file. Running instance polls for it
+- [`poll_bring_to_front_flag`](utilities/poll_bring_to_front_flag.py) (from `claude_backend/single_instance.py:171`) -- Called from the running instance's Tk after-loop (every ~1s).
+- [`acquire_or_exit`](utilities/acquire_or_exit.py) (from `claude_backend/single_instance.py:191`) -- Try to acquire a single-instance lock. Exit cleanly if already held.
+- [`is_locked`](utilities/is_locked.py) (from `claude_backend/single_instance.py:240`) -- Non-acquiring check: is another instance currently running?
+- [`is_process_alive_by_cmdline`](utilities/is_process_alive_by_cmdline.py) (from `claude_backend/single_instance.py:263`) -- Scan running processes for one whose argv contains `needle` as
+- [`_normalize_path`](utilities/_normalize_path.py) (from `claude_backend/storage.py:85`) -- Normalize a relative or absolute path into clean segments.
+- [`write_file`](utilities/write_file.py) (from `claude_backend/storage.py:24`) -- Write content to a file under the project directory.
 
 ## Classes
 
@@ -52,12 +272,107 @@
 - [`SavingsEvent`](classes/SavingsEvent.py) (from `classifier/types.py:65`) -- Single routing event for the tracker.
 - [`SavingsSummary`](classes/SavingsSummary.py) (from `classifier/types.py:82`) -- Aggregate savings stats.
 - [`ScanConfig`](classes/ScanConfig.py) (from `claude_backend/config.py:21`) -- Configuration for scanning and generation.
+- [`_Handler`](classes/_Handler.py) (from `claude_backend/http_server.py:496`) -- Minimal request router.
 - [`ManifestEntry`](classes/ManifestEntry.py) (from `claude_backend/manifest.py:16`) -- A single entry in the generation manifest.
+- [`Manifest`](classes/Manifest.py) (from `claude_backend/manifest.py:27`) -- Tracks generated files for delta updates.
+- [`Prefs`](classes/Prefs.py) (from `claude_backend/prefs.py:27`) -- User-facing preferences. Add fields here; defaults always backfilled.
+- [`SearchIndex`](classes/SearchIndex.py) (from `claude_backend/search.py:461`) -- Pre-computed inverted index for fast searching over large snippet sets.
+- [`ProjectStorage`](classes/ProjectStorage.py) (from `claude_backend/storage.py:15`) -- Manages file storage for a Claude project directory.
+- [`TokenTracker`](classes/TokenTracker.py) (from `claude_backend/tracker.py:29`) -- Persistent token savings counter stored in ~/.claude/token_savings.jsonl.
 - [`FileEntry`](classes/FileEntry.py) (from `claude_backend/types.py:11`) -- A discovered file from any scanner.
 - [`CodeBlock`](classes/CodeBlock.py) (from `claude_backend/types.py:29`) -- An extracted code block (function, class, etc.).
+- [`ModuleInfo`](classes/ModuleInfo.py) (from `claude_backend/types.py:42`) -- Information about a Python module.
+- [`ConventionReport`](classes/ConventionReport.py) (from `claude_backend/types.py:53`) -- Detected coding conventions.
+- [`ProjectAnalysis`](classes/ProjectAnalysis.py) (from `claude_backend/types.py:66`) -- Complete analysis of a project.
+- [`GenerationResult`](classes/GenerationResult.py) (from `claude_backend/types.py:82`) -- Result of a generation run.
+- [`AppConfig`](classes/AppConfig.py) (from `gemini_coder/config.py:11`) -- Application configuration.
+- [`ConfigManager`](classes/ConfigManager.py) (from `gemini_coder/config.py:26`) -- Manages application configuration with persistence.
+- [`ExpansionEngine`](classes/ExpansionEngine.py) (from `gemini_coder/expander.py:9`) -- Engine for expanding simple tasks into detailed prompts.
+- [`Conversation`](classes/Conversation.py) (from `gemini_coder/gemini_client.py:9`) -- Stub conversation class for browser-based clients.
+- [`GeminiClient`](classes/GeminiClient.py) (from `gemini_coder/gemini_client.py:30`) -- Stub Gemini client for browser-based automation.
+- [`HistoryEntry`](classes/HistoryEntry.py) (from `gemini_coder/history.py:15`) -- A single entry in the history.
+- [`HistoryManager`](classes/HistoryManager.py) (from `gemini_coder/history.py:63`) -- Manages task and conversation history.
+- [`TaskStatus`](classes/TaskStatus.py) (from `gemini_coder/task_manager.py:15`) -- Task execution status.
+- [`CodingTask`](classes/CodingTask.py) (from `gemini_coder/task_manager.py:24`) -- A coding task to be executed by an AI agent.
+- [`TaskQueue`](classes/TaskQueue.py) (from `gemini_coder/task_manager.py:59`) -- Queue of tasks for a session.
+- [`TaskExecutor`](classes/TaskExecutor.py) (from `gemini_coder/task_manager.py:126`) -- Executes tasks from a queue using a client.
+- [`StatusBar`](classes/StatusBar.py) (from `gemini_coder/ui/app.py:11`) -- Status bar at the bottom of the window.
+- [`ToastNotification`](classes/ToastNotification.py) (from `gemini_coder/ui/app.py:54`) -- Toast notification overlay.
+- [`GeminiCoderApp`](classes/GeminiCoderApp.py) (from `gemini_coder/ui/app.py:102`) -- Base application class for Gemini Coder desktop app.
+- [`AIProfile`](classes/AIProfile.py) (from `gemini_coder_web/ai_profiles.py:17`) -- Describes how to automate a specific AI web chat.
+- [`GUIBridge`](classes/GUIBridge.py) (from `gemini_coder_web/bridge.py:10`) -- Bridge between the GUI and the backend.
+- [`BroadcastConfig`](classes/BroadcastConfig.py) (from `gemini_coder_web/broadcast.py:146`) -- Configuration for a broadcast run.
+- [`CDPSelectors`](classes/CDPSelectors.py) (from `gemini_coder_web/cdp_client.py:60`) -- CSS selectors for interacting with a specific AI chat site.
+- [`CDPTarget`](classes/CDPTarget.py) (from `gemini_coder_web/cdp_client.py:545`) -- A Chrome/Edge tab available for CDP connection.
+- [`Session`](classes/Session.py) (from `gemini_coder_web/session_manager.py:25`) -- One AI browser session — a window, a client, and a task queue.
+- [`BrowserGeminiClient`](classes/BrowserGeminiClient.py) (from `gemini_coder_web/universal_client.py:511`) -- Legacy alias — creates a UniversalBrowserClient with Gemini preset.
+- [`WindowRect`](classes/WindowRect.py) (from `gemini_coder_web/window_manager.py:24`) -- Screen rectangle.
+- [`ScreenInfo`](classes/ScreenInfo.py) (from `gemini_coder_web/window_manager.py:33`) -- Screen dimensions.
+- [`_Stub`](classes/_Stub.py) (from `gemini_coder_web/ui/app_web.py:521`)
+- [`_Stub`](classes/_Stub.py) (from `ui/app_web.py:489`)
 
 ## Patterns
 
+- [`__init__`](patterns/__init__.py) (from `broadcast.py:190`)
+- [`__init__`](patterns/__init__.py) (from `cdp_client.py:188`)
+- [`is_connected`](patterns/is_connected.py) (from `cdp_client.py:218`)
+- [`__init__`](patterns/__init__.py) (from `cdp_client.py:630`)
+- [`connection`](patterns/connection.py) (from `cdp_client.py:641`)
+- [`is_connected`](patterns/is_connected.py) (from `cdp_client.py:645`)
 - [`patch_launcher_wrapper`](patterns/patch_launcher_wrapper.py) (from `patch_upstream.py:97`)
 - [`patch_build_script`](patterns/patch_build_script.py) (from `patch_upstream.py:131`)
+- [`__init__`](patterns/__init__.py) (from `session_manager.py:50`)
+- [`__init__`](patterns/__init__.py) (from `smart_router.py:33`)
+- [`__init__`](patterns/__init__.py) (from `universal_client.py:83`)
+- [`is_configured`](patterns/is_configured.py) (from `universal_client.py:124`)
+- [`__init__`](patterns/__init__.py) (from `universal_client.py:513`)
+- [`__init__`](patterns/__init__.py) (from `classifier/classifier.py:25`)
+- [`_load_keywords`](patterns/_load_keywords.py) (from `classifier/classifier.py:29`)
+- [`_build_reasoning`](patterns/_build_reasoning.py) (from `classifier/classifier.py:244`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/gui.py:212`)
+- [`_on_load`](patterns/_on_load.py) (from `claude_backend/gui.py:624`)
+- [`_build_snippets`](patterns/_build_snippets.py) (from `claude_backend/gui.py:1713`)
+- [`_build_memory`](patterns/_build_memory.py) (from `claude_backend/gui.py:1816`)
+- [`_load_memory`](patterns/_load_memory.py) (from `claude_backend/gui.py:1831`)
+- [`_build_report`](patterns/_build_report.py) (from `claude_backend/gui.py:1911`)
+- [`_save_report`](patterns/_save_report.py) (from `claude_backend/gui.py:2058`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/manifest.py:30`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/ollama_manager.py:44`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/overlay.py:98`)
+- [`_build`](patterns/_build.py) (from `claude_backend/overlay.py:161`)
+- [`__post_init__`](patterns/__post_init__.py) (from `claude_backend/prefs.py:54`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/search.py:468`)
+- [`_build`](patterns/_build.py) (from `claude_backend/search.py:480`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/storage.py:18`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/tracker.py:32`)
+- [`_load`](patterns/_load.py) (from `claude_backend/tracker.py:37`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/tracker.py:125`)
+- [`_load`](patterns/_load.py) (from `claude_backend/tracker.py:143`)
+- [`_save`](patterns/_save.py) (from `claude_backend/tracker.py:153`)
+- [`__init__`](patterns/__init__.py) (from `claude_backend/welcome.py:118`)
+- [`_build_index`](patterns/_build_index.py) (from `claude_backend/generators/snippet_library.py:198`)
 - [`init_sqlite`](patterns/init_sqlite.py) (from `extension_native_bridge/host/claude_native_host.py:86`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/config.py:29`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/expander.py:12`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/gemini_client.py:12`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/gemini_client.py:33`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/history.py:18`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/history.py:66`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/task_manager.py:62`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/task_manager.py:129`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/ui/app.py:14`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/ui/app.py:57`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder/ui/app.py:105`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/bridge.py:17`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/broadcast.py:169`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/cdp_client.py:188`)
+- [`is_connected`](patterns/is_connected.py) (from `gemini_coder_web/cdp_client.py:218`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/cdp_client.py:630`)
+- [`connection`](patterns/connection.py) (from `gemini_coder_web/cdp_client.py:641`)
+- [`is_connected`](patterns/is_connected.py) (from `gemini_coder_web/cdp_client.py:645`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/session_manager.py:50`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/universal_client.py:83`)
+- [`is_configured`](patterns/is_configured.py) (from `gemini_coder_web/universal_client.py:124`)
+- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/universal_client.py:513`)
+- [`_on_save_task_settings`](patterns/_on_save_task_settings.py) (from `gemini_coder_web/ui/app_web.py:1309`)
+- [`_on_save_task_settings`](patterns/_on_save_task_settings.py) (from `ui/app_web.py:1314`)

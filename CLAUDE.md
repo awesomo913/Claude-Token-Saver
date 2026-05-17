@@ -3,7 +3,7 @@
 
 ## Overview
 
-- **Files**: 120 (.py (98), .md (11), .json (6), .js (4), .toml (1))
+- **Files**: 123 (.py (101), .md (11), .json (6), .js (4), .toml (1))
 - **Entry points**: `broadcast.py`, `cdp_test.py`, `launch_token_saver.py`, `launch_tray.py`, `patch_upstream.py`
 - **Dependencies**: customtkinter, pyautogui, pyperclip, pystray, Pillow, psutil, websocket-client, keyboard, customtkinter, pyautogui
 - **Key files**: `README.md`, `CLAUDE.md`, `pyproject.toml`, `requirements.txt`, `.gitignore`
@@ -14,7 +14,7 @@
 ai/  (2 files)
 classifier/  (5 files)
   data/  (1 files)
-claude_backend/  (36 files)
+claude_backend/  (37 files)
   analyzers/  (4 files)
   generators/  (4 files)
   scanners/  (4 files)
@@ -30,7 +30,7 @@ gemini_coder/  (11 files)
   ui/  (3 files)
 gemini_coder_web/  (14 files)
   ui/  (2 files)
-scripts/  (10 files)
+scripts/  (12 files)
 tests/  (3 files)
   literag_sample/  (3 files)
 ui/  (2 files)
@@ -63,6 +63,7 @@ ui/  (2 files)
 - `claude_backend/backend.py` -- ClaudeContextManager: orchestrates scanning, analysis, and generation
 - `claude_backend/cli.py` -- CLI interface for Claude token saver [entry]
 - `claude_backend/config.py` -- Configuration loading with layered defaults
+- `claude_backend/constants.py` -- Shared constants used by /improve (http_server) and Smart-mode Builder (gui)
 - `claude_backend/generators/claude_md.py` -- Generate a CLAUDE.md file from project analysis
 - `claude_backend/generators/memory_files.py` -- Generate Claude Code memory files for persistent cross-session context
 - `claude_backend/generators/snippet_library.py` -- Extract and organize reusable code snippets into a library
@@ -84,10 +85,5 @@ ui/  (2 files)
 - `claude_backend/tokenizer.py` -- Accurate token counting with BPE tokenizer + fast fallback
 - `claude_backend/tracker.py` -- Token savings tracker and session context memory
 - `claude_backend/tray.py` -- System tray icon for Claude Token Saver — passive reminder + quick actions [entry]
-- `claude_backend/types.py` -- Shared data types for claude_backend
-
-## Snippets
-
-See `.claude/snippets/INDEX.md` for reusable code blocks.
 
 <!-- claude-backend:generated:end -->

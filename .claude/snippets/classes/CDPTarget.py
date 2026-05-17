@@ -1,4 +1,4 @@
-# From: cdp_client.py:545
+# From: gemini_coder_web/cdp_client.py:545
 
 @dataclass
 class CDPTarget:

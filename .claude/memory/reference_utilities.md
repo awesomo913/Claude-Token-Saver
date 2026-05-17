@@ -110,15 +110,19 @@ type: reference
 | `ScanConfig` | `claude_backend/config.py` | Configuration for scanning and generation. |
 | `load_config` | `claude_backend/config.py` | Load config with layered defaults. |
 | `save_config_example` | `claude_backend/config.py` | Write a config example to disk. |
+| `SNIPPET_TOP_K` | `claude_backend/constants.py` | -- |
+| `SNIPPET_TOKEN_BUDGET` | `claude_backend/constants.py` | -- |
+| `RECENT_PROJECTS_LIMIT` | `claude_backend/constants.py` | -- |
 | `logger` | `claude_backend/gui.py` | -- |
+| `RZ` | `claude_backend/gui.py` | -- |
+| `RZ_IN` | `claude_backend/gui.py` | -- |
+| `RZ_CHIP` | `claude_backend/gui.py` | -- |
+| `RZ_TINY` | `claude_backend/gui.py` | -- |
 | `C` | `claude_backend/gui.py` | -- |
 | `F` | `claude_backend/gui.py` | -- |
 | `M` | `claude_backend/gui.py` | -- |
 | `TEMPLATES` | `claude_backend/gui.py` | -- |
 | `AI_TUTORIAL_TEXT` | `claude_backend/gui.py` | -- |
-| `TUTORIAL_TEXT` | `claude_backend/gui.py` | -- |
-| `TokenSaverApp` | `claude_backend/gui.py` | -- |
-| `main` | `claude_backend/gui.py` | -- |
 | `logger` | `claude_backend/hotkey.py` | -- |
 | `start` | `claude_backend/hotkey.py` | Register the global hotkey. Returns True on success. |
 | `stop` | `claude_backend/hotkey.py` | Unregister the hotkey. Idempotent. |
@@ -133,7 +137,7 @@ type: reference
 | `ensure_gui_running` | `claude_backend/http_server.py` | If GUI not running, spawn it. Returns True if it should appear soon. |
 | `ALLOWED_ORIGIN_PREFIXES` | `claude_backend/http_server.py` | -- |
 | `is_port_free` | `claude_backend/http_server.py` | Check whether 127.0.0.1:port is free for bind. |
-| `start_server` | `claude_backend/http_server.py` | Start HTTP server in a daemon thread. Idempotent. |
+| `is_backend_alive` | `claude_backend/http_server.py` | Authoritative check: is OUR HTTP backend answering on port? |
 | `logger` | `claude_backend/manifest.py` | -- |
 | `ManifestEntry` | `claude_backend/manifest.py` | A single entry in the generation manifest. |
 | `Manifest` | `claude_backend/manifest.py` | Tracks generated files for delta updates. |
@@ -166,8 +170,10 @@ type: reference
 | `logger` | `claude_backend/session_launcher.py` | -- |
 | `main` | `claude_backend/session_launcher.py` | Entry point. Always exits 0 to avoid blocking session start. |
 | `logger` | `claude_backend/single_instance.py` | -- |
+| `poll_bring_to_front_flag` | `claude_backend/single_instance.py` | Called from the running instance's Tk after-loop (every ~1s). |
 | `acquire_or_exit` | `claude_backend/single_instance.py` | Try to acquire a single-instance lock. Exit cleanly if already held. |
 | `is_locked` | `claude_backend/single_instance.py` | Non-acquiring check: is another instance currently running? |
+| `is_process_alive_by_cmdline` | `claude_backend/single_instance.py` | Scan running processes for one whose argv contains `needle` as |
 | `logger` | `claude_backend/storage.py` | -- |
 | `ProjectStorage` | `claude_backend/storage.py` | Manages file storage for a Claude project directory. |
 | `logger` | `claude_backend/tokenizer.py` | -- |
@@ -219,6 +225,7 @@ type: reference
 | `logger` | `claude_backend/generators/snippet_library.py` | -- |
 | `generate_snippet_library` | `claude_backend/generators/snippet_library.py` | Generate snippet files organized by category. |
 | `write_snippet_library` | `claude_backend/generators/snippet_library.py` | Write snippet library to project's .claude/snippets/ directory. |
+| `load_snippet_library` | `claude_backend/generators/snippet_library.py` | Read .claude/snippets/*/*.py back into CodeBlocks for search. |
 | `logger` | `claude_backend/scanners/github.py` | -- |
 | `GITHUB_API` | `claude_backend/scanners/github.py` | -- |
 | `scan_github_sources` | `claude_backend/scanners/github.py` | Scan configured GitHub sources and return FileEntry list. |
@@ -346,6 +353,12 @@ type: reference
 | `copies` | `scripts/analyze_real_savings.py` | -- |
 | `tests` | `scripts/analyze_real_savings.py` | -- |
 | `total_provided` | `scripts/analyze_real_savings.py` | -- |
+| `HERE` | `scripts/ensure_exe_current.py` | -- |
+| `ROOT` | `scripts/ensure_exe_current.py` | -- |
+| `DESKTOP` | `scripts/ensure_exe_current.py` | -- |
+| `DEPLOY_DIR` | `scripts/ensure_exe_current.py` | -- |
+| `SHIPPED` | `scripts/ensure_exe_current.py` | -- |
+| `main` | `scripts/ensure_exe_current.py` | -- |
 | `main` | `scripts/export_all_to_zip.py` | -- |
 | `project` | `scripts/full_audit.py` | -- |
 | `mgr` | `scripts/full_audit.py` | -- |
@@ -367,6 +380,9 @@ type: reference
 | `md` | `scripts/gen_breakdown.py` | -- |
 | `mem_tok` | `scripts/gen_breakdown.py` | -- |
 | `sd` | `scripts/gen_breakdown.py` | -- |
+| `REPO_ROOT` | `scripts/grade_savings.py` | -- |
+| `grade` | `scripts/grade_savings.py` | -- |
+| `main` | `scripts/grade_savings.py` | -- |
 | `tracker_path` | `scripts/max_plan_public.py` | -- |
 | `events` | `scripts/max_plan_public.py` | -- |
 | `anon` | `scripts/max_plan_public.py` | -- |

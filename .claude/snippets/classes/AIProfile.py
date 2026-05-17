@@ -1,4 +1,4 @@
-# From: ai_profiles.py:17
+# From: gemini_coder_web/ai_profiles.py:17
 
 @dataclass
 class AIProfile:

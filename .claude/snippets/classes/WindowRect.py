@@ -1,4 +1,4 @@
-# From: window_manager.py:24
+# From: gemini_coder_web/window_manager.py:24
 
 @dataclass
 class WindowRect:

@@ -1,4 +1,4 @@
-# From: claude_backend/generators/snippet_library.py:108
+# From: claude_backend/generators/snippet_library.py:198
 
 def _build_index(
     utilities: list[CodeBlock],
@@ -9,7 +9,7 @@ def _build_index(
 
     if utilities:
         lines.append("## Utilities\n")
-        for block in utilities[:30]:
+        for block in utilities[:250]:
             doc = ""
             if block.docstring:
                 doc = f" -- {block.docstring.split(chr(10))[0].strip()}"
@@ -19,7 +19,7 @@ def _build_index(
 
     if classes:
         lines.append("## Classes\n")
-        for block in classes[:20]:
+        for block in classes[:100]:
             doc = ""
             if block.docstring:
                 doc = f" -- {block.docstring.split(chr(10))[0].strip()}"
@@ -29,7 +29,7 @@ def _build_index(
 
     if patterns:
         lines.append("## Patterns\n")
-        for block in patterns[:15]:
+        for block in patterns[:100]:
             doc = ""
             if block.docstring:
                 doc = f" -- {block.docstring.split(chr(10))[0].strip()}"

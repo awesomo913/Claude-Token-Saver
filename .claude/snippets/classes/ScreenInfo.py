@@ -1,4 +1,4 @@
-# From: window_manager.py:33
+# From: gemini_coder_web/window_manager.py:33
 
 @dataclass
 class ScreenInfo:
