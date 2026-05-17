@@ -22,7 +22,7 @@ _KIND_BY_DIR = {
 
 def generate_snippet_library(
     analysis: ProjectAnalysis,
-    max_lines: int = 50,
+    max_lines: int = 100,
 ) -> dict[str, str]:
     """Generate snippet files organized by category.
 
@@ -33,40 +33,52 @@ def generate_snippet_library(
     classes: list[CodeBlock] = []
     patterns: list[CodeBlock] = []
 
+    # "method" was excluded prior to 2026-05 — class-heavy projects
+    # (e.g. claude_backend itself) had ZERO indexed coverage. Grader
+    # bottomed out at 30% hit rate on this project as a result.
+    # Include methods alongside free functions so retrieval sees them.
+    _CALLABLE_KINDS = ("function", "async_function", "method")
+    # Private underscore-prefix filter dropped, since codebases like
+    # this one use _handle_pending / _show_picker / _copy_context as
+    # the main internal API — exactly what users ask about.
     for block in analysis.blocks:
         lines = block.end_line - block.start_line + 1
-        if lines > max_lines:
-            continue
-        # Skip private code — not reusable
-        if block.name.startswith("_"):
-            continue
-        # Skip very small blocks (one-liners aren't useful snippets)
+        # Skip very small blocks (one-liners aren't useful snippets).
         if lines < 3:
             continue
 
+        # Two separate size budgets: classes get 150 (full small classes
+        # stay readable), callables get max_lines (default 50). The
+        # previous code applied max_lines as a single gate up top, which
+        # silently dropped every 50<lines<=150 class — including
+        # TokenTracker, OverlayButton, SearchIndex.
         if block.kind == "class" and lines <= 150:
             classes.append(block)
-        elif block.kind in ("function", "async_function") and block.docstring:
+        elif block.kind in _CALLABLE_KINDS and lines <= max_lines and block.docstring:
             utilities.append(block)
-        elif block.kind in ("function", "async_function") and _is_pattern(block):
+        elif block.kind in _CALLABLE_KINDS and lines <= max_lines and _is_pattern(block):
             patterns.append(block)
 
-    # Write utility snippets
-    for i, block in enumerate(utilities[:30]):
+    # Write utility snippets. Caps were 30/20/15 — too small for
+    # multi-package projects (everything past the first ~80 utilities
+    # dropped silently). Grader hit 30% recall on claude_backend until
+    # the cap was raised; now 250/100/100, which still keeps the
+    # inverted index well under smart_search's cache thresholds.
+    for i, block in enumerate(utilities[:250]):
         path = f"utilities/{_safe_name(block.name)}.py"
         header = f"# From: {block.file_path}:{block.start_line}\n"
         if block.docstring:
             header += f"# {block.docstring.split(chr(10))[0].strip()}\n"
         snippets[path] = header + "\n" + block.source
 
-    # Write class snippets
-    for i, block in enumerate(classes[:20]):
+    # Write class snippets.
+    for i, block in enumerate(classes[:100]):
         path = f"classes/{_safe_name(block.name)}.py"
         header = f"# From: {block.file_path}:{block.start_line}\n"
         snippets[path] = header + "\n" + block.source
 
-    # Write pattern snippets
-    for i, block in enumerate(patterns[:15]):
+    # Write pattern snippets.
+    for i, block in enumerate(patterns[:100]):
         path = f"patterns/{_safe_name(block.name)}.py"
         header = f"# From: {block.file_path}:{block.start_line}\n"
         snippets[path] = header + "\n" + block.source
@@ -80,7 +92,7 @@ def generate_snippet_library(
 
 def write_snippet_library(
     analysis: ProjectAnalysis,
-    max_lines: int = 50,
+    max_lines: int = 100,
 ) -> list[str]:
     """Write snippet library to project's .claude/snippets/ directory.
 
@@ -192,7 +204,7 @@ def _build_index(
 
     if utilities:
         lines.append("## Utilities\n")
-        for block in utilities[:30]:
+        for block in utilities[:250]:
             doc = ""
             if block.docstring:
                 doc = f" -- {block.docstring.split(chr(10))[0].strip()}"
@@ -202,7 +214,7 @@ def _build_index(
 
     if classes:
         lines.append("## Classes\n")
-        for block in classes[:20]:
+        for block in classes[:100]:
             doc = ""
             if block.docstring:
                 doc = f" -- {block.docstring.split(chr(10))[0].strip()}"
@@ -212,7 +224,7 @@ def _build_index(
 
     if patterns:
         lines.append("## Patterns\n")
-        for block in patterns[:15]:
+        for block in patterns[:100]:
             doc = ""
             if block.docstring:
                 doc = f" -- {block.docstring.split(chr(10))[0].strip()}"
