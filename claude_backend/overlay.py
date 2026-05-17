@@ -468,7 +468,7 @@ class OverlayButton(ctk.CTkToplevel):
                 daemon=True,
             ).start()
 
-        def _populate(projects: list[dict]) -> None:
+        def _populate(projects: list[dict], error_reason: str = "") -> None:
             try:
                 if not picker.winfo_exists():
                     return
@@ -481,10 +481,35 @@ class OverlayButton(ctk.CTkToplevel):
                 # Normal during picker teardown race; logged at debug
                 # so it isn't silent if it ever recurs at scale.
                 logger.debug("loading_lbl destroy failed: %s", e)
+            # Wipe any previous result rows so a retry doesn't stack
+            # on top of an empty-state label.
+            for child in scroll.winfo_children():
+                try:
+                    child.destroy()
+                except Exception:
+                    pass
+            if error_reason:
+                ctk.CTkLabel(
+                    scroll, text=f"Couldn't load projects:\n{error_reason}",
+                    font=("Segoe UI", 10), text_color=_C["err"],
+                    wraplength=280, justify="left",
+                ).pack(anchor="w", padx=6, pady=(10, 4))
+                ctk.CTkButton(
+                    scroll, text="Retry",
+                    font=("Segoe UI", 10, "bold"),
+                    fg_color=_C["accent"], hover_color="#1a8ae8",
+                    text_color="#fff", height=28,
+                    command=lambda: threading.Thread(
+                        target=_fetch, daemon=True, name="ts_picker_retry",
+                    ).start(),
+                ).pack(anchor="w", padx=6, pady=(0, 8))
+                return
             if not projects:
                 ctk.CTkLabel(
-                    scroll, text="(no projects yet)",
+                    scroll,
+                    text="(no projects yet)\nRun Bootstrap on a project first.",
                     font=("Segoe UI", 10), text_color=_C["fg3"],
+                    wraplength=280, justify="left",
                 ).pack(anchor="w", padx=6, pady=10)
                 return
             for proj in projects:
@@ -520,9 +545,24 @@ class OverlayButton(ctk.CTkToplevel):
 
         # Background fetch — timeout generous since slug-walker can
         # take several seconds on cold cache. Result lands on Tk main
-        # thread via picker.after(0, ...).
+        # thread via picker.after(0, ...). Captures error reason so the
+        # picker can show why instead of a generic "(no projects yet)"
+        # that hides timeouts and 5xx behind the empty state.
         def _fetch() -> None:
             projs: list[dict] = []
+            error_reason = ""
+            # Reset to loading state on retry — picker may already show
+            # an error label from a prior failed fetch.
+            try:
+                picker.after(0, lambda: (
+                    [c.destroy() for c in scroll.winfo_children()],
+                    ctk.CTkLabel(
+                        scroll, text="Loading projects...",
+                        font=("Segoe UI", 10), text_color=_C["fg3"],
+                    ).pack(anchor="w", padx=6, pady=10),
+                ))
+            except Exception as e:
+                logger.debug("picker.after loading-state schedule failed: %s", e)
             try:
                 r = urllib.request.urlopen(
                     f"http://127.0.0.1:{self._prefs.http_port}/projects",
@@ -531,9 +571,10 @@ class OverlayButton(ctk.CTkToplevel):
                 data = json.loads(r.read())
                 projs = data.get("projects", []) or []
             except Exception as e:
-                logger.warning("/projects fetch failed: %s", e)
+                error_reason = type(e).__name__ + (f": {e}" if str(e) else "")
+                logger.warning("/projects fetch failed: %s", error_reason)
             try:
-                picker.after(0, _populate, projs)
+                picker.after(0, _populate, projs, error_reason)
             except Exception as e:
                 # picker.after() can raise TclError when the picker
                 # was destroyed before the fetch returned. Logged so
@@ -557,6 +598,7 @@ class OverlayButton(ctk.CTkToplevel):
         spawning/signaling the GUI in http_server.py — that's the right
         moment.
         """
+        error: str = ""
         try:
             body = json.dumps({
                 "prompt": prompt, "project_path": project_path,
@@ -570,7 +612,8 @@ class OverlayButton(ctk.CTkToplevel):
             with urllib.request.urlopen(req, timeout=10) as r:
                 _ = r.read()
         except Exception as e:
-            logger.warning("Overlay /improve POST failed: %s", e)
+            error = type(e).__name__ + (f": {e}" if str(e) else "")
+            logger.warning("Overlay /improve POST failed: %s", error)
         finally:
             # Restore original clipboard if any (best-effort).
             if pyperclip is not None and saved_clipboard:
@@ -578,6 +621,47 @@ class OverlayButton(ctk.CTkToplevel):
                     pyperclip.copy(saved_clipboard)
                 except Exception:
                     pass
+        # Schedule the user-visible error on the Tk main thread. Without
+        # this the overlay silently swallows network failures and the
+        # user thinks Improve is broken.
+        if error:
+            try:
+                self.after(0, lambda msg=error: self._show_error_toast(msg))
+            except Exception as e:
+                logger.debug("error toast schedule failed: %s", e)
+
+    def _show_error_toast(self, msg: str) -> None:
+        """Tiny self-dismissing CTkToplevel near the overlay reporting failure.
+
+        Plain Toplevel rather than a CTkLabel `place`d on the overlay so it
+        survives even if the overlay is faded to 30% idle alpha — the user
+        needs to see this regardless of overlay opacity.
+        """
+        try:
+            tw = ctk.CTkToplevel(self)
+            tw.overrideredirect(True)
+            tw.attributes("-topmost", True)
+            ox, oy = self.winfo_x(), self.winfo_y()
+            tw.geometry(f"260x60+{ox - 60}+{oy + _OVERLAY_H + 6}")
+            tw.configure(fg_color=_C["err"])
+            ctk.CTkLabel(
+                tw,
+                text=f"Improve failed\n{msg[:140]}",
+                font=("Segoe UI", 10, "bold"),
+                text_color="#ffffff",
+                wraplength=240,
+                justify="left",
+            ).pack(fill="both", expand=True, padx=8, pady=6)
+            tw.after(4000, lambda: self._safe_destroy(tw))
+        except Exception as e:
+            logger.debug("error toast build failed: %s", e)
+
+    @staticmethod
+    def _safe_destroy(widget) -> None:
+        try:
+            widget.destroy()
+        except Exception:
+            pass
 
 
 def open_overlay(parent: ctk.CTk) -> OverlayButton:
@@ -590,6 +674,30 @@ def open_overlay(parent: ctk.CTk) -> OverlayButton:
 _OVERLAY_INSTANCE_NAME = "ClaudeTokenSaverOverlay"
 
 
+def _install_overlay_file_logger() -> None:
+    """Mirror overlay's logger to ~/.claude/session-data/<date>/exe_Overlay.log.
+
+    Frozen exe has no console, so warnings vanished into the void. The file
+    handler is best-effort: any failure here is silent (logged at debug
+    via the existing logger config) since we don't want logging setup to
+    crash the overlay process.
+    """
+    try:
+        from datetime import date
+        log_dir = Path.home() / ".claude" / "session-data" / date.today().isoformat()
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "exe_Overlay.log"
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setLevel(logging.INFO)
+        fh.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        ))
+        logging.getLogger().addHandler(fh)
+        logger.info("overlay logger attached to %s", log_path)
+    except Exception as e:
+        logger.debug("overlay file logger install failed: %s", e)
+
+
 def main() -> int:
     """Run overlay as its own process with a hidden parent Tk root.
 
@@ -597,7 +705,8 @@ def main() -> int:
     True, so the overlay is independent of the GUI window's lifetime.
     Single-instance enforced via shared lock (re-launching is a no-op).
     """
-    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    _install_overlay_file_logger()
 
     # Best-effort cleanup of any stale raise-flag left behind by a
     # previously-crashed overlay instance — otherwise we'd "raise" on
