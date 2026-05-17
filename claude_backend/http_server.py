@@ -6,7 +6,7 @@ available while the tray is up.
 
 Endpoints:
   GET  /health     -> {ok: true, version}
-  GET  /projects   -> [{slug, path, name, last_used_iso}] (max 5)
+  GET  /projects   -> [{slug, path, name, last_used_iso}] (max 10)
   POST /improve    -> {improved_prompt, token_savings_estimate, builder_opened}
 
 Communication with GUI process is via a pending-file at
@@ -288,7 +288,11 @@ def list_recent_projects(
 
 # ── Improve pipeline ────────────────────────────────────────────────
 
-from .constants import SNIPPET_TOKEN_BUDGET, SNIPPET_TOP_K
+from .constants import (
+    RECENT_PROJECTS_LIMIT,
+    SNIPPET_TOKEN_BUDGET,
+    SNIPPET_TOP_K,
+)
 
 
 def _gather_snippet_context(
@@ -527,7 +531,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(200, {"ok": True, "version": VERSION}, origin)
         elif path == "/projects":
             try:
-                projects = list_recent_projects(limit=5)
+                projects = list_recent_projects(limit=RECENT_PROJECTS_LIMIT)
                 self._send_json(200, {"projects": projects}, origin)
             except Exception as e:
                 logger.exception("/projects failed")

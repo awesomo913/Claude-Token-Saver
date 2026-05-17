@@ -2216,6 +2216,17 @@ class TokenSaverApp(ctk.CTk):
             as_btns, text="Remove shortcut", width=140, height=30,
             font=(F, 11), fg_color=C["bg2"],
             command=self._remove_autostart,
+        ).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            as_btns, text="Relaunch tray", width=130, height=30,
+            font=(F, 11, "bold"), fg_color=C["purple"],
+            hover_color=C["purple_hover"],
+            command=self._relaunch_tray,
+        ).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            as_btns, text="Close tray", width=110, height=30,
+            font=(F, 11), fg_color=C["err"], hover_color=C["err_hover"],
+            command=self._close_tray,
         ).pack(side="left")
 
         # ═══════════════════════════════════════════════════════════
@@ -3162,6 +3173,88 @@ class TokenSaverApp(ctk.CTk):
                 self._ov_status_lbl.configure(
                     text="Disabled", text_color=C["fg3"],
                 )
+
+    def _kill_processes_by_arg(self, arg: str) -> int:
+        """Kill every other-process whose argv contains `arg` exactly.
+
+        Returns count killed. Uses psutil to scope to ClaudeTokenSaver
+        instances only — won't touch the GUI we're running in (filter
+        excludes self_pid).
+        """
+        try:
+            import psutil
+        except ImportError:
+            logger.warning("psutil unavailable; cannot scope kill")
+            return 0
+        import os as _os
+        self_pid = _os.getpid()
+        killed = 0
+        for p in psutil.process_iter(["pid", "cmdline"]):
+            try:
+                if p.info.get("pid") == self_pid:
+                    continue
+                cmd = p.info.get("cmdline") or []
+                if arg in cmd:
+                    p.kill()
+                    killed += 1
+            except (psutil.NoSuchProcess, psutil.AccessDenied,
+                    psutil.ZombieProcess):
+                continue
+        return killed
+
+    def _spawn_tray(self) -> bool:
+        """Spawn a detached tray subprocess. Returns True on launch attempt."""
+        try:
+            import subprocess
+            exe_path = (Path.home() / "Desktop" / "My Apps"
+                        / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe")
+            if exe_path.is_file():
+                args = [str(exe_path), "--tray"]
+            else:
+                args = [sys.executable, "-m", "claude_backend", "tray"]
+            creationflags = 0
+            if sys.platform == "win32":
+                creationflags = (subprocess.CREATE_NO_WINDOW
+                                 | subprocess.DETACHED_PROCESS)
+            subprocess.Popen(args, creationflags=creationflags, close_fds=True)
+            return True
+        except Exception as e:
+            logger.exception("Tray spawn failed")
+            self._toast(f"Tray spawn failed: {e}", "error")
+            return False
+
+    def _close_tray(self) -> None:
+        """Kill any running --tray ClaudeTokenSaver process."""
+        killed = self._kill_processes_by_arg("--tray")
+        if killed:
+            self._toast(f"Tray closed ({killed} process)", "success")
+        else:
+            self._toast("No tray process found", "warning")
+        try:
+            self._refresh_backend_statuses()
+        except Exception as e:
+            logger.debug("status refresh after close_tray failed: %s", e)
+
+    def _relaunch_tray(self) -> None:
+        """Kill running tray + spawn a fresh one (picks up newest exe)."""
+        killed = self._kill_processes_by_arg("--tray")
+        # Brief settle so PyInstaller-bundled child cleanup completes
+        # before re-spawn — otherwise the new tray may race the
+        # single-instance lock release of the killed one and exit.
+        self.after(800, self._relaunch_tray_phase2,
+                   killed)
+
+    def _relaunch_tray_phase2(self, killed: int) -> None:
+        ok = self._spawn_tray()
+        if ok:
+            self._toast(
+                f"Tray relaunched (killed {killed}, spawned 1)",
+                "success",
+            )
+        try:
+            self._refresh_backend_statuses()
+        except Exception as e:
+            logger.debug("status refresh after relaunch failed: %s", e)
 
     def _summon_overlay(self) -> None:
         """Spawn overlay subprocess (or raise existing one via IPC).

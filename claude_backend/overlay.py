@@ -69,8 +69,10 @@ _OVERLAY_H = 40
 # Project picker dimensions + edge clamp constants. The picker is a
 # borderless CTkToplevel anchored relative to the overlay; without
 # clamping it can render off-screen if the overlay is at a screen edge.
-_PICKER_W = 320
-_PICKER_H = 300
+_PICKER_W = 340
+# Tall enough to show ~10 two-line project rows without scrolling.
+# CTkScrollableFrame still kicks in if /projects ever exceeds the cap.
+_PICKER_H = 460
 _PICKER_GAP = 6        # gap between overlay and picker
 _SCREEN_MARGIN = 8     # min distance from any screen edge
 
@@ -444,7 +446,7 @@ class OverlayButton(ctk.CTkToplevel):
             font=("Segoe UI", 11, "bold"), text_color=_C["fg2"],
         ).pack(anchor="w", padx=10, pady=(8, 4))
 
-        scroll = ctk.CTkScrollableFrame(picker, fg_color=_C["bg"], height=180)
+        scroll = ctk.CTkScrollableFrame(picker, fg_color=_C["bg"], height=340)
         scroll.pack(fill="both", expand=True, padx=10, pady=(0, 4))
 
         # Loading placeholder. /projects can take several seconds the

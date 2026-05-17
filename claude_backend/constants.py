@@ -7,3 +7,6 @@ from __future__ import annotations
 
 SNIPPET_TOP_K = 3
 SNIPPET_TOKEN_BUDGET = 800
+
+# How many recent projects /projects returns, also the overlay picker cap.
+RECENT_PROJECTS_LIMIT = 10
