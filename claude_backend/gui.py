@@ -2296,9 +2296,23 @@ class TokenSaverApp(ctk.CTk):
             ov_card, text="Show floating overlay button (subprocess survives GUI close)",
             font=(F, 12), command=self._toggle_overlay,
         )
-        self._set_overlay.pack(padx=20, pady=(2, 12), anchor="w")
+        self._set_overlay.pack(padx=20, pady=(2, 6), anchor="w")
         if self._prefs.show_overlay:
             self._set_overlay.select()
+
+        # Summon button — spawns the overlay if it isn't running, or
+        # raises the existing one via the single-instance dup-launch IPC
+        # (acquire_or_exit writes a raise-flag the existing overlay polls).
+        # Works whether the toggle above is currently on or off.
+        ctk.CTkButton(
+            ov_card,
+            text="Summon overlay now",
+            font=(F, 11, "bold"),
+            height=32,
+            fg_color=C["purple"], hover_color=C["purple_hover"],
+            text_color=C["fg"], corner_radius=RZ_IN,
+            command=self._summon_overlay,
+        ).pack(padx=20, pady=(0, 12), anchor="w")
 
         # ═══════════════════════════════════════════════════════════
         #  GLOBAL HOTKEY (Phase 3)
@@ -3148,6 +3162,26 @@ class TokenSaverApp(ctk.CTk):
                 self._ov_status_lbl.configure(
                     text="Disabled", text_color=C["fg3"],
                 )
+
+    def _summon_overlay(self) -> None:
+        """Spawn overlay subprocess (or raise existing one via IPC).
+
+        Works whether overlay is currently running or not — single_instance
+        lock in overlay.main() handles the dup-launch case by writing a
+        raise-flag the existing process polls every 1.5s.
+        """
+        try:
+            from .tray import _spawn_overlay_subprocess
+            _spawn_overlay_subprocess()
+            self._toast("Overlay summoned", "success")
+        except Exception as e:
+            logger.exception("Summon overlay failed")
+            self._toast(f"Summon failed: {e}", "error")
+        # Reflect new state in the status row beside the toggle.
+        try:
+            self._refresh_backend_statuses()
+        except Exception as e:
+            logger.debug("backend status refresh failed: %s", e)
 
     def _toggle_overlay(self) -> None:
         """Persist pref, spawn/kill overlay subprocess to match."""

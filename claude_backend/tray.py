@@ -182,10 +182,21 @@ def _quit_action(icon: "pystray.Icon") -> None:
     icon.stop()
 
 
+def _summon_overlay_action(icon: "pystray.Icon") -> None:
+    """Tray-menu handler — spawns overlay or raises existing one via IPC."""
+    try:
+        _spawn_overlay_subprocess()
+        icon.notify("Improve overlay summoned", "Look for the floating pill")
+    except Exception as e:
+        logger.exception("Summon overlay (tray menu) failed")
+        icon.notify("Summon failed", str(e))
+
+
 def build_menu() -> Menu:
     """Tray right-click menu. Default item (single-click) opens GUI."""
     return Menu(
         MenuItem("Open Token Saver GUI", _launch_gui, default=True),
+        MenuItem("Summon Improve overlay", _summon_overlay_action),
         Menu.SEPARATOR,
         MenuItem("Run prep on current folder", _run_prep),
         MenuItem(lambda _: _status_label(), None, enabled=False),
