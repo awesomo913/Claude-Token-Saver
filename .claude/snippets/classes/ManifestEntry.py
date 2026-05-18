@@ -1,4 +1,5 @@
 # From: claude_backend/manifest.py:16
+# A single entry in the generation manifest.
 
 @dataclass
 class ManifestEntry:

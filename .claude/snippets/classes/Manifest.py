@@ -1,4 +1,5 @@
 # From: claude_backend/manifest.py:27
+# Tracks generated files for delta updates.
 
 class Manifest:
     """Tracks generated files for delta updates."""

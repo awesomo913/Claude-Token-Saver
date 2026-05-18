@@ -1,4 +1,5 @@
 # From: gemini_coder/gemini_client.py:9
+# Stub conversation class for browser-based clients.
 
 class Conversation:
     """Stub conversation class for browser-based clients."""

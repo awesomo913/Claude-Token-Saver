@@ -1,5 +1,5 @@
-# From: gemini_coder_web/cdp_client.py:645
+# From: cdp_client.py:218
 
     @property
     def is_connected(self) -> bool:
-        return self._conn.is_connected
+        return self._ws is not None and self._ws.connected

@@ -1,4 +1,5 @@
 # From: classifier/types.py:53
+# Response from any AI backend.
 
 @dataclass
 class BackendResponse:

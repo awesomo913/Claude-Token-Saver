@@ -1,4 +1,5 @@
 # From: classifier/types.py:43
+# Description of an available model.
 
 @dataclass
 class ModelInfo:

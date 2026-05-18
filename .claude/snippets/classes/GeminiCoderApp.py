@@ -1,4 +1,5 @@
 # From: gemini_coder/ui/app.py:102
+# Base application class for Gemini Coder desktop app.
 
 class GeminiCoderApp(ctk.CTk):
     """Base application class for Gemini Coder desktop app."""

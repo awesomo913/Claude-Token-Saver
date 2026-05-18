@@ -1,4 +1,5 @@
 # From: classifier/types.py:65
+# Single routing event for the tracker.
 
 @dataclass
 class SavingsEvent:

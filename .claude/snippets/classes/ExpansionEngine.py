@@ -1,4 +1,5 @@
 # From: gemini_coder/expander.py:9
+# Engine for expanding simple tasks into detailed prompts.
 
 class ExpansionEngine:
     """Engine for expanding simple tasks into detailed prompts."""

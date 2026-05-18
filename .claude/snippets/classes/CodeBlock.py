@@ -1,4 +1,5 @@
 # From: claude_backend/types.py:29
+# An extracted code block (function, class, etc.).
 
 @dataclass
 class CodeBlock:

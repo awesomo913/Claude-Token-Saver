@@ -1,4 +1,5 @@
 # From: claude_backend/http_server.py:496
+# Minimal request router.
 
 class _Handler(BaseHTTPRequestHandler):
     """Minimal request router."""

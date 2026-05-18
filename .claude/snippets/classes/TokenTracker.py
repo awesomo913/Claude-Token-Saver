@@ -1,4 +1,5 @@
 # From: claude_backend/tracker.py:29
+# Persistent token savings counter stored in ~/.claude/token_savings.jsonl.
 
 class TokenTracker:
     """Persistent token savings counter stored in ~/.claude/token_savings.jsonl."""

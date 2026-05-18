@@ -1,4 +1,5 @@
 # From: claude_backend/config.py:21
+# Configuration for scanning and generation.
 
 @dataclass
 class ScanConfig:

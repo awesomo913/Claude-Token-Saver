@@ -1,4 +1,5 @@
 # From: claude_backend/types.py:82
+# Result of a generation run.
 
 @dataclass
 class GenerationResult:

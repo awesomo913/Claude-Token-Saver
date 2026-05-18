@@ -1,4 +1,5 @@
-# From: claude_backend/search.py:461
+# From: claude_backend/search.py:495
+# Pre-computed inverted index for fast searching over large snippet sets.
 
 class SearchIndex:
     """Pre-computed inverted index for fast searching over large snippet sets.
@@ -21,8 +22,12 @@ class SearchIndex:
 
     def _build(self) -> None:
         for i, block in enumerate(self._snippets):
-            nw = [w for w in re.split(r"[_\s]+", block.name.lower()) if w]
+            nw = _split_name(block.name)
             self._name_words.append(nw)
+            # Also index the full lowercased symbol name as one token so
+            # `qw == "focus_window"` queries hit immediately via the
+            # candidate-selection union (line ~517) without needing fuzzy.
+            self._name_index.setdefault(block.name.lower(), set()).add(i)
             for w in nw:
                 self._name_index.setdefault(w, set()).add(i)
                 # Also index stems and prefixes for fuzzy
@@ -75,12 +80,17 @@ class SearchIndex:
             sc = score_block(block, expanded, raw_words)
             if sc < min_score:
                 continue
-            # Penalize very large blocks — they waste tokens
-            lines = block.end_line - block.start_line + 1
-            if lines > 100:
-                sc *= 0.5
-            elif lines > 50:
-                sc *= 0.75
+            # Penalize very large blocks — they waste tokens. Skip for
+            # classes: they're inherently bigger (TokenTracker=83L, etc.),
+            # the injection-time token budget already caps oversize, and
+            # the penalty was double-counting against semantically-dense
+            # class hits.
+            if block.kind != "class":
+                lines = block.end_line - block.start_line + 1
+                if lines > 100:
+                    sc *= 0.5
+                elif lines > 50:
+                    sc *= 0.75
             results.append((sc, block))
 
         # Deduplicate: same function from duplicate file paths (e.g. cdp_client.py vs gemini_coder_web/cdp_client.py)

@@ -1,4 +1,5 @@
 # From: gemini_coder/config.py:11
+# Application configuration.
 
 @dataclass
 class AppConfig:

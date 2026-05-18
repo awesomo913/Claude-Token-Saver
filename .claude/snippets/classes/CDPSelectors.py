@@ -1,4 +1,5 @@
-# From: gemini_coder_web/cdp_client.py:60
+# From: cdp_client.py:60
+# CSS selectors for interacting with a specific AI chat site.
 
 @dataclass
 class CDPSelectors:

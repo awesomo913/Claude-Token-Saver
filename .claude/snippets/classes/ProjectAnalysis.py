@@ -1,4 +1,5 @@
 # From: claude_backend/types.py:66
+# Complete analysis of a project.
 
 @dataclass
 class ProjectAnalysis:

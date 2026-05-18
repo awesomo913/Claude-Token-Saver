@@ -1,4 +1,5 @@
 # From: claude_backend/types.py:53
+# Detected coding conventions.
 
 @dataclass
 class ConventionReport:

@@ -1,4 +1,5 @@
 # From: gemini_coder/config.py:26
+# Manages application configuration with persistence.
 
 class ConfigManager:
     """Manages application configuration with persistence."""

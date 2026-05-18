@@ -113,6 +113,11 @@ type: reference
 | `SNIPPET_TOP_K` | `claude_backend/constants.py` | -- |
 | `SNIPPET_TOKEN_BUDGET` | `claude_backend/constants.py` | -- |
 | `RECENT_PROJECTS_LIMIT` | `claude_backend/constants.py` | -- |
+| `bootstrap` | `claude_backend/diagnostics_logger.py` | Initialize the per-app logger. Idempotent: subsequent calls are no-ops. |
+| `state` | `claude_backend/diagnostics_logger.py` | Log a STATE transition (e.g. 'init->ready', 'ready->shutdown'). |
+| `decision` | `claude_backend/diagnostics_logger.py` | Log a non-trivial branch (e.g. 'cleanup=skipped reason=no-stale-flag'). |
+| `perf` | `claude_backend/diagnostics_logger.py` | Log a timed operation (e.g. perf('tk_root_init', 0.42)). |
+| `previous_crash` | `claude_backend/diagnostics_logger.py` | Inspect tail of the most-recent log file across recent days. |
 | `logger` | `claude_backend/gui.py` | -- |
 | `RZ` | `claude_backend/gui.py` | -- |
 | `RZ_IN` | `claude_backend/gui.py` | -- |

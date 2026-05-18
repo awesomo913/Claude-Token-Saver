@@ -1,4 +1,5 @@
 # From: smart_router.py:30
+# Classify prompts and route between free + Claude sessions.
 
 class SmartRouter:
     """Classify prompts and route between free + Claude sessions."""

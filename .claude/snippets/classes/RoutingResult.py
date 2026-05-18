@@ -1,4 +1,5 @@
 # From: classifier/types.py:31
+# Complete routing output from the splitter.
 
 @dataclass
 class RoutingResult:

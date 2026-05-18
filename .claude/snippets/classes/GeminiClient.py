@@ -1,4 +1,5 @@
 # From: gemini_coder/gemini_client.py:30
+# Stub Gemini client for browser-based automation.
 
 class GeminiClient:
     """Stub Gemini client for browser-based automation."""

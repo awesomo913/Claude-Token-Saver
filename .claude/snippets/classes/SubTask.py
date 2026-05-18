@@ -1,4 +1,5 @@
 # From: classifier/types.py:22
+# A single decomposed piece of a prompt.
 
 @dataclass
 class SubTask:

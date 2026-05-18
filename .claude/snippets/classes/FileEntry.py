@@ -1,4 +1,5 @@
 # From: claude_backend/types.py:11
+# A discovered file from any scanner.
 
 @dataclass
 class FileEntry:

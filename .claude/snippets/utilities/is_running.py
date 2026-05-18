@@ -1,10 +1,6 @@
-# From: claude_backend/ollama_manager.py:51
-# Check if Ollama server is reachable.
+# From: claude_backend/hotkey.py:196
+# True if hotkey is currently registered.
 
-    def is_running(self) -> bool:
-        """Check if Ollama server is reachable."""
-        try:
-            self._api_get("/api/tags", timeout=3)
-            return True
-        except Exception:
-            return False
+def is_running() -> bool:
+    """True if hotkey is currently registered."""
+    return _registered_combo is not None and _thread is not None and _thread.is_alive()

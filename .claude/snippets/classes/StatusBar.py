@@ -1,4 +1,5 @@
 # From: gemini_coder/ui/app.py:11
+# Status bar at the bottom of the window.
 
 class StatusBar(ctk.CTkFrame):
     """Status bar at the bottom of the window."""

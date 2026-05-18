@@ -1,4 +1,5 @@
-# From: gemini_coder_web/cdp_client.py:545
+# From: cdp_client.py:545
+# A Chrome/Edge tab available for CDP connection.
 
 @dataclass
 class CDPTarget:

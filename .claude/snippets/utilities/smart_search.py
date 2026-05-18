@@ -1,4 +1,4 @@
-# From: claude_backend/search.py:567
+# From: claude_backend/search.py:610
 # Search snippets with fuzzy matching, synonyms, and intent detection.
 
 def smart_search(

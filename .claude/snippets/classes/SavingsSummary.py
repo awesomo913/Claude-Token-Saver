@@ -1,4 +1,5 @@
 # From: classifier/types.py:82
+# Aggregate savings stats.
 
 @dataclass
 class SavingsSummary:

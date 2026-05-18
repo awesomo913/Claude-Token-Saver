@@ -1,4 +1,5 @@
 # From: gemini_coder/task_manager.py:24
+# A coding task to be executed by an AI agent.
 
 @dataclass
 class CodingTask:

@@ -102,7 +102,7 @@
 - [`_count_file_references`](utilities/_count_file_references.py) (from `classifier/classifier.py:201`) -- Count references to file paths in the prompt.
 - [`_extract_metadata`](utilities/_extract_metadata.py) (from `classifier/classifier.py:221`) -- Extract URLs, code languages, error patterns from prompt.
 - [`_estimate_tokens`](utilities/_estimate_tokens.py) (from `classifier/splitter.py:10`) -- Rough token estimate: ~4 chars per token for English.
-- [`split`](utilities/split.py) (from `classifier/splitter.py:21`) -- Decompose prompt into routed subtasks and build two output prompts.
+- [`split`](utilities/classifier__split.py) (from `classifier/splitter.py:21`) -- Decompose prompt into routed subtasks and build two output prompts.
 - [`_split_sentences`](utilities/_split_sentences.py) (from `classifier/splitter.py:80`) -- Split on sentence boundaries, preserving code blocks as single units.
 - [`_classify_sentences`](utilities/_classify_sentences.py) (from `classifier/splitter.py:108`) -- Classify each sentence independently.
 - [`_merge_consecutive`](utilities/_merge_consecutive.py) (from `classifier/splitter.py:123`) -- Merge consecutive subtasks with the same routing to avoid fragmentation.
@@ -140,6 +140,10 @@
 - [`_load_json`](utilities/_load_json.py) (from `claude_backend/config.py:71`) -- Load a JSON config file, return empty dict on failure.
 - [`_dict_to_config`](utilities/_dict_to_config.py) (from `claude_backend/config.py:85`) -- Convert a dict to ScanConfig, ignoring unknown keys.
 - [`save_config_example`](utilities/save_config_example.py) (from `claude_backend/config.py:92`) -- Write a config example to disk.
+- [`_log_dir`](utilities/_log_dir.py) (from `claude_backend/diagnostics_logger.py:32`) -- Return today's log dir, with fallback to %TEMP% if home is unwritable.
+- [`state`](utilities/state.py) (from `claude_backend/diagnostics_logger.py:124`) -- Log a STATE transition (e.g. 'init->ready', 'ready->shutdown').
+- [`decision`](utilities/decision.py) (from `claude_backend/diagnostics_logger.py:129`) -- Log a non-trivial branch (e.g. 'cleanup=skipped reason=no-stale-flag').
+- [`perf`](utilities/perf.py) (from `claude_backend/diagnostics_logger.py:134`) -- Log a timed operation (e.g. perf('tk_root_init', 0.42)).
 - [`_open_welcome`](utilities/_open_welcome.py) (from `claude_backend/gui.py:380`) -- Open welcome dialog. Reuses existing window if already open.
 - [`_refresh_status_dot`](utilities/_refresh_status_dot.py) (from `claude_backend/gui.py:485`) -- Poll HTTP backend health; recolor the status-bar dot accordingly.
 - [`_ensure_project_matches_field`](utilities/_ensure_project_matches_field.py) (from `claude_backend/gui.py:643`) -- If the Project entry field path differs from `self._project_path`,
@@ -187,7 +191,7 @@
 - [`_open_extension_folder`](utilities/_open_extension_folder.py) (from `claude_backend/gui.py:3340`) -- Open the bundled extension folder in Explorer.
 - [`_ai_show_tutorial`](utilities/_ai_show_tutorial.py) (from `claude_backend/gui.py:3369`) -- Toggle the Auto-Inject tutorial text.
 - [`start`](utilities/start.py) (from `claude_backend/hotkey.py:122`) -- Register the global hotkey. Returns True on success.
-- [`stop`](utilities/stop.py) (from `claude_backend/hotkey.py:183`) -- Unregister the hotkey. Idempotent.
+- [`stop`](utilities/claude_backend__stop.py) (from `claude_backend/hotkey.py:183`) -- Unregister the hotkey. Idempotent.
 - [`is_running`](utilities/is_running.py) (from `claude_backend/hotkey.py:196`) -- True if hotkey is currently registered.
 - [`_claude_projects_dir`](utilities/_claude_projects_dir.py) (from `claude_backend/http_server.py:50`) -- Where Token Saver writes per-project memory files.
 - [`_resolve_slug_filesystem_walk`](utilities/_resolve_slug_filesystem_walk.py) (from `claude_backend/http_server.py:60`) -- Decode a Claude Code slug to a real path by walking the filesystem.
@@ -201,14 +205,14 @@
 - [`is_backend_alive`](utilities/is_backend_alive.py) (from `claude_backend/http_server.py:623`) -- Authoritative check: is OUR HTTP backend answering on port?
 - [`start_server`](utilities/start_server.py) (from `claude_backend/http_server.py:645`) -- Start HTTP server in a daemon thread. Idempotent.
 - [`stop_server`](utilities/stop_server.py) (from `claude_backend/http_server.py:673`) -- Shut down the running server. Mostly for tests / Quit.
-- [`is_running`](utilities/is_running.py) (from `claude_backend/http_server.py:686`) -- Quick check whether server thread is alive.
+- [`is_running`](utilities/claude_backend__is_running.py) (from `claude_backend/http_server.py:686`) -- Quick check whether server thread is alive.
 - [`_load`](utilities/_load.py) (from `claude_backend/manifest.py:35`) -- Load existing manifest from disk.
 - [`save`](utilities/save.py) (from `claude_backend/manifest.py:54`) -- Write manifest to disk.
 - [`needs_update`](utilities/needs_update.py) (from `claude_backend/manifest.py:66`) -- Check if a generated file needs updating.
 - [`is_user_modified`](utilities/is_user_modified.py) (from `claude_backend/manifest.py:84`) -- Check if a generated file was modified by the user after generation.
 - [`record`](utilities/record.py) (from `claude_backend/manifest.py:94`) -- Record a generated file in the manifest.
 - [`_detect_quant`](utilities/_detect_quant.py) (from `claude_backend/ollama_manager.py:303`) -- Detect quantization from model name.
-- [`is_running`](utilities/is_running.py) (from `claude_backend/ollama_manager.py:51`) -- Check if Ollama server is reachable.
+- [`is_running`](utilities/claude_backend__is_running_2.py) (from `claude_backend/ollama_manager.py:51`) -- Check if Ollama server is reachable.
 - [`find_executable`](utilities/find_executable.py) (from `claude_backend/ollama_manager.py:59`) -- Locate the Ollama tray binary so we can auto-start the daemon.
 - [`start_daemon`](utilities/start_daemon.py) (from `claude_backend/ollama_manager.py:90`) -- Spawn the Ollama daemon if installed, and wait until reachable.
 - [`list_models`](utilities/list_models.py) (from `claude_backend/ollama_manager.py:136`) -- Get all locally installed models with metadata.
@@ -218,7 +222,6 @@
 - [`delete_model`](utilities/delete_model.py) (from `claude_backend/ollama_manager.py:239`) -- Delete a locally installed model.
 - [`interpret_query`](utilities/interpret_query.py) (from `claude_backend/ollama_manager.py:257`) -- Ask the current model to extract search keywords from sloppy English.
 - [`open_overlay`](utilities/open_overlay.py) (from `claude_backend/overlay.py:669`) -- Construct + return an overlay attached to `parent`.
-- [`_install_overlay_file_logger`](utilities/_install_overlay_file_logger.py) (from `claude_backend/overlay.py:679`) -- Mirror overlay's logger to ~/.claude/session-data/<date>/exe_Overlay.log.
 - [`_restore_position`](utilities/_restore_position.py) (from `claude_backend/overlay.py:139`) -- Get saved position or default to top-right of primary monitor.
 - [`_save_position`](utilities/_save_position.py) (from `claude_backend/overlay.py:151`) -- Persist current position to prefs.
 - [`_set_alpha`](utilities/_set_alpha.py) (from `claude_backend/overlay.py:217`) -- Set window translucency; clamped + cached so we don't pound
@@ -227,7 +230,7 @@
 - [`_post_improve`](utilities/_post_improve.py) (from `claude_backend/overlay.py:590`) -- POST to /improve. The GUI picks up the result via pending file.
 - [`_show_error_toast`](utilities/_show_error_toast.py) (from `claude_backend/overlay.py:635`) -- Tiny self-dismissing CTkToplevel near the overlay reporting failure.
 - [`load`](utilities/load.py) (from `claude_backend/prefs.py:59`) -- Load prefs. Missing file or bad JSON -> defaults.
-- [`save`](utilities/save.py) (from `claude_backend/prefs.py:80`) -- Persist prefs atomically. Returns True on success.
+- [`save`](utilities/claude_backend__save.py) (from `claude_backend/prefs.py:80`) -- Persist prefs atomically. Returns True on success.
 - [`detect_intent`](utilities/detect_intent.py) (from `claude_backend/prompt_builder.py:65`) -- Detect what the user is trying to do from their request text.
 - [`build_smart_prompt`](utilities/build_smart_prompt.py) (from `claude_backend/prompt_builder.py:160`) -- Build a lean structured prompt from user request + code context.
 - [`review_prompt`](utilities/review_prompt.py) (from `claude_backend/prompt_builder.py:192`) -- Analyze the built prompt for token efficiency.
@@ -238,7 +241,8 @@
 - [`_stem`](utilities/_stem.py) (from `claude_backend/search.py:288`) -- Cheap suffix-stripping stemmer. Not perfect, just good enough.
 - [`_fuzzy_match`](utilities/_fuzzy_match.py) (from `claude_backend/search.py:300`) -- Score 0.0-1.0 for how well query matches target.
 - [`_expand_query`](utilities/_expand_query.py) (from `claude_backend/search.py:322`) -- Turn a sloppy English query into expanded search terms.
-- [`smart_search`](utilities/smart_search.py) (from `claude_backend/search.py:567`) -- Search snippets with fuzzy matching, synonyms, and intent detection.
+- [`_split_name`](utilities/_split_name.py) (from `claude_backend/search.py:376`) -- Tokenize a symbol: underscores, whitespace, AND camelCase boundaries.
+- [`smart_search`](utilities/smart_search.py) (from `claude_backend/search.py:610`) -- Search snippets with fuzzy matching, synonyms, and intent detection.
 - [`_find_exe`](utilities/_find_exe.py) (from `claude_backend/session_launcher.py:45`) -- Locate ClaudeTokenSaver.exe on disk. Prefer Desktop deploy.
 - [`_spawn_detached`](utilities/_spawn_detached.py) (from `claude_backend/session_launcher.py:53`) -- Spawn a detached subprocess so the hook can return immediately.
 - [`main`](utilities/main.py) (from `claude_backend/session_launcher.py:75`) -- Entry point. Always exits 0 to avoid blocking session start.
@@ -252,6 +256,102 @@
 - [`is_process_alive_by_cmdline`](utilities/is_process_alive_by_cmdline.py) (from `claude_backend/single_instance.py:263`) -- Scan running processes for one whose argv contains `needle` as
 - [`_normalize_path`](utilities/_normalize_path.py) (from `claude_backend/storage.py:85`) -- Normalize a relative or absolute path into clean segments.
 - [`write_file`](utilities/write_file.py) (from `claude_backend/storage.py:24`) -- Write content to a file under the project directory.
+- [`write_entry`](utilities/write_entry.py) (from `claude_backend/storage.py:51`) -- Write a FileEntry to the project directory.
+- [`list_files`](utilities/list_files.py) (from `claude_backend/storage.py:55`) -- List all files in the project directory (relative paths).
+- [`_log_event`](utilities/_log_event.py) (from `claude_backend/storage.py:66`) -- Append an event to the log file.
+- [`_add_manifest`](utilities/_add_manifest.py) (from `claude_backend/storage.py:75`) -- Append an entry to the manifest.
+- [`_get_encoder`](utilities/_get_encoder.py) (from `claude_backend/tokenizer.py:19`) -- Load tiktoken encoder once (lazy singleton).
+- [`count_tokens`](utilities/count_tokens.py) (from `claude_backend/tokenizer.py:35`) -- Count tokens accurately with BPE, fallback to heuristic.
+- [`has_bpe`](utilities/has_bpe.py) (from `claude_backend/tokenizer.py:52`) -- Check if real BPE tokenizer is available.
+- [`record`](utilities/claude_backend__record.py) (from `claude_backend/tracker.py:59`) -- Record a token-saving event.
+- [`get_all_time_total`](utilities/get_all_time_total.py) (from `claude_backend/tracker.py:83`) -- Total tokens AVOIDED (real savings, not just referenced).
+- [`get_session_total`](utilities/get_session_total.py) (from `claude_backend/tracker.py:93`) -- Tokens avoided since a given ISO timestamp (current app session).
+- [`get_operation_breakdown`](utilities/get_operation_breakdown.py) (from `claude_backend/tracker.py:103`) -- Break down tokens saved by operation type.
+- [`record_context_add`](utilities/record_context_add.py) (from `claude_backend/tracker.py:167`) -- Record that an item was added to the context builder.
+- [`record_clipboard_copy`](utilities/record_clipboard_copy.py) (from `claude_backend/tracker.py:196`) -- Record a context-to-clipboard copy.
+- [`get_recently_used`](utilities/get_recently_used.py) (from `claude_backend/tracker.py:213`) -- Get most recently added context items (newest first).
+- [`suggest_related`](utilities/suggest_related.py) (from `claude_backend/tracker.py:224`) -- Suggest snippets related to what's in the current context queue.
+- [`get_activity_summary`](utilities/get_activity_summary.py) (from `claude_backend/tracker.py:271`) -- Summary for dashboard display.
+- [`_make_icon_image`](utilities/_make_icon_image.py) (from `claude_backend/tray.py:38`) -- Render a 64x64 tray icon. Green dot = installed, gray = not.
+- [`_is_snoozed`](utilities/_is_snoozed.py) (from `claude_backend/tray.py:70`) -- Snooze flag honored only if timestamp is in future.
+- [`_python_exe`](utilities/_python_exe.py) (from `claude_backend/tray.py:95`) -- Find pythonw.exe (no console) on Windows; fallback to sys.executable.
+- [`_spawn_overlay_subprocess`](utilities/_spawn_overlay_subprocess.py) (from `claude_backend/tray.py:105`) -- Spawn the overlay as a detached subprocess.
+- [`_launch_gui`](utilities/_launch_gui.py) (from `claude_backend/tray.py:126`) -- Open Token Saver GUI in detached subprocess.
+- [`_run_prep`](utilities/_run_prep.py) (from `claude_backend/tray.py:142`) -- Run prep on current working directory. Notify on completion.
+- [`_summon_overlay_action`](utilities/_summon_overlay_action.py) (from `claude_backend/tray.py:185`) -- Tray-menu handler — spawns overlay or raises existing one via IPC.
+- [`build_menu`](utilities/build_menu.py) (from `claude_backend/tray.py:195`) -- Tray right-click menu. Default item (single-click) opens GUI.
+- [`show_welcome`](utilities/show_welcome.py) (from `claude_backend/welcome.py:316`) -- Open welcome window. Returns dialog instance (caller can grab focus etc).
+- [`_refresh_status`](utilities/_refresh_status.py) (from `claude_backend/welcome.py:251`) -- Update the status card based on Auto-Inject state.
+- [`_do_install`](utilities/_do_install.py) (from `claude_backend/welcome.py:292`) -- One-click install button inside welcome.
+- [`extract_js_blocks`](utilities/extract_js_blocks.py) (from `claude_backend/analyzers/code_extractor.py:100`) -- Extract function and class blocks from JS/TS source.
+- [`_extract_js_name`](utilities/_extract_js_name.py) (from `claude_backend/analyzers/code_extractor.py:204`) -- Extract the name from a JS declaration.
+- [`extract_blocks`](utilities/extract_blocks.py) (from `claude_backend/analyzers/code_extractor.py:214`) -- Extract code blocks based on file extension.
+- [`detect_conventions`](utilities/detect_conventions.py) (from `claude_backend/analyzers/pattern_detector.py:15`) -- Analyze Python files to detect coding conventions.
+- [`_classify`](utilities/_classify.py) (from `claude_backend/analyzers/pattern_detector.py:118`) -- Classify between two options based on counts.
+- [`_classify_multi`](utilities/_classify_multi.py) (from `claude_backend/analyzers/pattern_detector.py:143`) -- Pick the dominant style from multiple options.
+- [`map_modules`](utilities/map_modules.py) (from `claude_backend/analyzers/structure_mapper.py:13`) -- Analyze Python files to extract module-level information.
+- [`_extract_public_names`](utilities/_extract_public_names.py) (from `claude_backend/analyzers/structure_mapper.py:50`) -- Extract non-private top-level names (functions, classes, assignments).
+- [`_extract_internal_imports`](utilities/_extract_internal_imports.py) (from `claude_backend/analyzers/structure_mapper.py:64`) -- Extract imports that reference project-internal modules.
+- [`_is_entry_point`](utilities/_is_entry_point.py) (from `claude_backend/analyzers/structure_mapper.py:82`) -- Check if source contains common entry point patterns.
+- [`build_import_graph`](utilities/build_import_graph.py) (from `claude_backend/analyzers/structure_mapper.py:89`) -- Build a dict mapping module path -> list of internal imports.
+- [`generate_claude_md`](utilities/generate_claude_md.py) (from `claude_backend/generators/claude_md.py:16`) -- Generate CLAUDE.md content from a ProjectAnalysis.
+- [`write_claude_md`](utilities/write_claude_md.py) (from `claude_backend/generators/claude_md.py:54`) -- Write or update CLAUDE.md at the project root.
+- [`_structure_section`](utilities/_structure_section.py) (from `claude_backend/generators/claude_md.py:118`) -- Generate a 2-level directory tree.
+- [`compute_project_slug`](utilities/compute_project_slug.py) (from `claude_backend/generators/memory_files.py:23`) -- Compute the Claude Code project slug from an absolute path.
+- [`get_memory_dirs`](utilities/get_memory_dirs.py) (from `claude_backend/generators/memory_files.py:34`) -- Return (claude_code_memory_dir, project_memory_dir).
+- [`generate_memory_files`](utilities/generate_memory_files.py) (from `claude_backend/generators/memory_files.py:42`) -- Generate all memory file contents as a dict of filename -> content.
+- [`write_memory_files`](utilities/write_memory_files.py) (from `claude_backend/generators/memory_files.py:121`) -- Write memory files to both Claude Code dir and project dir.
+- [`_gen_index`](utilities/_gen_index.py) (from `claude_backend/generators/memory_files.py:325`) -- Generate MEMORY.md index.
+- [`write_snippet_library`](utilities/write_snippet_library.py) (from `claude_backend/generators/snippet_library.py:102`) -- Write snippet library to project's .claude/snippets/ directory.
+- [`_is_pattern`](utilities/_is_pattern.py) (from `claude_backend/generators/snippet_library.py:190`) -- Check if a function looks like a reusable pattern.
+- [`_safe_name`](utilities/_safe_name.py) (from `claude_backend/generators/snippet_library.py:201`) -- Sanitize a name for use as a filename.
+- [`_dedupe_and_assign_paths`](utilities/_dedupe_and_assign_paths.py) (from `claude_backend/generators/snippet_library.py:207`) -- Collapse content-duplicates and assign collision-safe filenames.
+- [`scan_github_sources`](utilities/scan_github_sources.py) (from `claude_backend/scanners/github.py:18`) -- Scan configured GitHub sources and return FileEntry list.
+- [`_list_repos`](utilities/_list_repos.py) (from `claude_backend/scanners/github.py:52`) -- Fetch repo list for a user or org.
+- [`_fetch_json`](utilities/_fetch_json.py) (from `claude_backend/scanners/github.py:117`) -- Fetch JSON from a URL with optional auth token.
+- [`_download`](utilities/_download.py) (from `claude_backend/scanners/github.py:131`) -- Download file content as string.
+- [`scan_local_sources`](utilities/scan_local_sources.py) (from `claude_backend/scanners/local.py:13`) -- Scan configured local source directories.
+- [`get_language_stats`](utilities/get_language_stats.py) (from `claude_backend/scanners/project.py:200`) -- Count files by extension.
+- [`find_entry_points`](utilities/find_entry_points.py) (from `claude_backend/scanners/project.py:208`) -- Find likely entry point files.
+- [`find_key_files`](utilities/find_key_files.py) (from `claude_backend/scanners/project.py:218`) -- Find important project files that exist at the root.
+- [`find_dependencies`](utilities/find_dependencies.py) (from `claude_backend/scanners/project.py:234`) -- Extract dependency names from requirements.txt or pyproject.toml.
+- [`read_message`](utilities/read_message.py) (from `extension_native_bridge/host/claude_native_host.py:58`) -- Read one Native Messaging frame from stdin.
+- [`write_message`](utilities/write_message.py) (from `extension_native_bridge/host/claude_native_host.py:77`) -- Send one frame to Chrome.
+- [`watch_insert_file`](utilities/watch_insert_file.py) (from `extension_native_bridge/host/claude_native_host.py:139`) -- Poll insert_request.json; on change, send insert_text to extension.
+- [`_load`](utilities/gemini_coder___load.py) (from `gemini_coder/config.py:33`) -- Load configuration from disk.
+- [`save`](utilities/gemini_coder__save.py) (from `gemini_coder/config.py:45`) -- Save configuration to disk.
+- [`update`](utilities/update.py) (from `gemini_coder/config.py:50`) -- Update configuration fields.
+- [`get`](utilities/get.py) (from `gemini_coder/config.py:57`) -- Get a configuration value.
+- [`expand_task`](utilities/expand_task.py) (from `gemini_coder/expander.py:16`) -- Expand a simple task description into a detailed prompt.
+- [`generate_code_prompt`](utilities/generate_code_prompt.py) (from `gemini_coder/expander.py:48`) -- Generate a code generation prompt from task and context.
+- [`add_message`](utilities/add_message.py) (from `gemini_coder/gemini_client.py:17`) -- Add a message to the conversation history.
+- [`clear`](utilities/clear.py) (from `gemini_coder/gemini_client.py:21`) -- Clear conversation history.
+- [`get_messages`](utilities/get_messages.py) (from `gemini_coder/gemini_client.py:25`) -- Get the conversation history.
+- [`generate`](utilities/gemini_coder__generate.py) (from `gemini_coder/gemini_client.py:40`) -- Generate a response (stub - actual implementation uses browser automation).
+- [`cancel`](utilities/cancel.py) (from `gemini_coder/gemini_client.py:46`) -- Cancel any ongoing generation.
+- [`update_settings`](utilities/gemini_coder__update_settings.py) (from `gemini_coder/gemini_client.py:50`) -- Update client settings.
+- [`_load`](utilities/gemini_coder___load_2.py) (from `gemini_coder/history.py:72`) -- Load history from disk.
+- [`_save`](utilities/_save.py) (from `gemini_coder/history.py:81`) -- Save history to disk.
+- [`add`](utilities/add.py) (from `gemini_coder/history.py:89`) -- Add a new history entry.
+- [`get_entries`](utilities/get_entries.py) (from `gemini_coder/history.py:96`) -- Get recent history entries.
+- [`clear`](utilities/gemini_coder__clear.py) (from `gemini_coder/history.py:100`) -- Clear all history.
+- [`search`](utilities/search.py) (from `gemini_coder/history.py:105`) -- Search history for entries matching query.
+- [`detect_platform`](utilities/detect_platform.py) (from `gemini_coder/platform_utils.py:9`) -- Detect the current platform.
+- [`get_config_dir`](utilities/get_config_dir.py) (from `gemini_coder/platform_utils.py:19`) -- Get the config directory for this application.
+- [`get_platform_name`](utilities/get_platform_name.py) (from `gemini_coder/platform_utils.py:33`) -- Return a human-readable platform name.
+- [`safe_call`](utilities/safe_call.py) (from `gemini_coder/safe_exec.py:10`) -- Safely call a function, returning default on exception.
+- [`safe_exec`](utilities/safe_exec.py) (from `gemini_coder/safe_exec.py:20`) -- Safely execute code, returning the result or None on error.
+- [`extract_code_blocks`](utilities/extract_code_blocks.py) (from `gemini_coder/safe_exec.py:35`) -- Extract code blocks from markdown text.
+- [`clean_code`](utilities/clean_code.py) (from `gemini_coder/safe_exec.py:43`) -- Clean extracted code by removing common AI artifacts.
+- [`add`](utilities/gemini_coder__add.py) (from `gemini_coder/task_manager.py:76`) -- Add a task to the queue.
+- [`next`](utilities/next.py) (from `gemini_coder/task_manager.py:81`) -- Get the next pending task.
+- [`complete`](utilities/complete.py) (from `gemini_coder/task_manager.py:91`) -- Mark a task as completed.
+- [`fail`](utilities/fail.py) (from `gemini_coder/task_manager.py:98`) -- Mark a task as failed.
+- [`cancel`](utilities/gemini_coder__cancel.py) (from `gemini_coder/task_manager.py:105`) -- Cancel a task.
+- [`on_change`](utilities/on_change.py) (from `gemini_coder/task_manager.py:111`) -- Register a change callback.
+- [`clear`](utilities/gemini_coder__clear_2.py) (from `gemini_coder/task_manager.py:119`) -- Clear all tasks.
+- [`start`](utilities/gemini_coder__start.py) (from `gemini_coder/task_manager.py:162`) -- Start executing tasks from the queue.
+- [`stop`](utilities/gemini_coder__stop.py) (from `gemini_coder/task_manager.py:173`) -- Stop executing tasks.
 
 ## Classes
 
@@ -276,7 +376,7 @@
 - [`ManifestEntry`](classes/ManifestEntry.py) (from `claude_backend/manifest.py:16`) -- A single entry in the generation manifest.
 - [`Manifest`](classes/Manifest.py) (from `claude_backend/manifest.py:27`) -- Tracks generated files for delta updates.
 - [`Prefs`](classes/Prefs.py) (from `claude_backend/prefs.py:27`) -- User-facing preferences. Add fields here; defaults always backfilled.
-- [`SearchIndex`](classes/SearchIndex.py) (from `claude_backend/search.py:461`) -- Pre-computed inverted index for fast searching over large snippet sets.
+- [`SearchIndex`](classes/SearchIndex.py) (from `claude_backend/search.py:495`) -- Pre-computed inverted index for fast searching over large snippet sets.
 - [`ProjectStorage`](classes/ProjectStorage.py) (from `claude_backend/storage.py:15`) -- Manages file storage for a Claude project directory.
 - [`TokenTracker`](classes/TokenTracker.py) (from `claude_backend/tracker.py:29`) -- Persistent token savings counter stored in ~/.claude/token_savings.jsonl.
 - [`FileEntry`](classes/FileEntry.py) (from `claude_backend/types.py:11`) -- A discovered file from any scanner.
@@ -299,80 +399,61 @@
 - [`StatusBar`](classes/StatusBar.py) (from `gemini_coder/ui/app.py:11`) -- Status bar at the bottom of the window.
 - [`ToastNotification`](classes/ToastNotification.py) (from `gemini_coder/ui/app.py:54`) -- Toast notification overlay.
 - [`GeminiCoderApp`](classes/GeminiCoderApp.py) (from `gemini_coder/ui/app.py:102`) -- Base application class for Gemini Coder desktop app.
-- [`AIProfile`](classes/AIProfile.py) (from `gemini_coder_web/ai_profiles.py:17`) -- Describes how to automate a specific AI web chat.
 - [`GUIBridge`](classes/GUIBridge.py) (from `gemini_coder_web/bridge.py:10`) -- Bridge between the GUI and the backend.
-- [`BroadcastConfig`](classes/BroadcastConfig.py) (from `gemini_coder_web/broadcast.py:146`) -- Configuration for a broadcast run.
-- [`CDPSelectors`](classes/CDPSelectors.py) (from `gemini_coder_web/cdp_client.py:60`) -- CSS selectors for interacting with a specific AI chat site.
-- [`CDPTarget`](classes/CDPTarget.py) (from `gemini_coder_web/cdp_client.py:545`) -- A Chrome/Edge tab available for CDP connection.
-- [`Session`](classes/Session.py) (from `gemini_coder_web/session_manager.py:25`) -- One AI browser session — a window, a client, and a task queue.
-- [`BrowserGeminiClient`](classes/BrowserGeminiClient.py) (from `gemini_coder_web/universal_client.py:511`) -- Legacy alias — creates a UniversalBrowserClient with Gemini preset.
-- [`WindowRect`](classes/WindowRect.py) (from `gemini_coder_web/window_manager.py:24`) -- Screen rectangle.
-- [`ScreenInfo`](classes/ScreenInfo.py) (from `gemini_coder_web/window_manager.py:33`) -- Screen dimensions.
-- [`_Stub`](classes/_Stub.py) (from `gemini_coder_web/ui/app_web.py:521`)
+- [`BroadcastConfig`](classes/gemini_coder_web__BroadcastConfig.py) (from `gemini_coder_web/broadcast.py:146`) -- Configuration for a broadcast run.
 - [`_Stub`](classes/_Stub.py) (from `ui/app_web.py:489`)
 
 ## Patterns
 
 - [`__init__`](patterns/__init__.py) (from `broadcast.py:190`)
-- [`__init__`](patterns/__init__.py) (from `cdp_client.py:188`)
+- [`__init__`](patterns/_root____init__.py) (from `cdp_client.py:188`)
 - [`is_connected`](patterns/is_connected.py) (from `cdp_client.py:218`)
-- [`__init__`](patterns/__init__.py) (from `cdp_client.py:630`)
+- [`__init__`](patterns/_root____init___2.py) (from `cdp_client.py:630`)
 - [`connection`](patterns/connection.py) (from `cdp_client.py:641`)
-- [`is_connected`](patterns/is_connected.py) (from `cdp_client.py:645`)
+- [`is_connected`](patterns/_root__is_connected.py) (from `cdp_client.py:645`)
 - [`patch_launcher_wrapper`](patterns/patch_launcher_wrapper.py) (from `patch_upstream.py:97`)
 - [`patch_build_script`](patterns/patch_build_script.py) (from `patch_upstream.py:131`)
-- [`__init__`](patterns/__init__.py) (from `session_manager.py:50`)
-- [`__init__`](patterns/__init__.py) (from `smart_router.py:33`)
-- [`__init__`](patterns/__init__.py) (from `universal_client.py:83`)
+- [`__init__`](patterns/_root____init___3.py) (from `session_manager.py:50`)
+- [`__init__`](patterns/_root____init___4.py) (from `smart_router.py:33`)
+- [`__init__`](patterns/_root____init___5.py) (from `universal_client.py:83`)
 - [`is_configured`](patterns/is_configured.py) (from `universal_client.py:124`)
-- [`__init__`](patterns/__init__.py) (from `universal_client.py:513`)
-- [`__init__`](patterns/__init__.py) (from `classifier/classifier.py:25`)
+- [`__init__`](patterns/_root____init___6.py) (from `universal_client.py:513`)
+- [`__init__`](patterns/classifier____init__.py) (from `classifier/classifier.py:25`)
 - [`_load_keywords`](patterns/_load_keywords.py) (from `classifier/classifier.py:29`)
 - [`_build_reasoning`](patterns/_build_reasoning.py) (from `classifier/classifier.py:244`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/gui.py:212`)
+- [`__init__`](patterns/claude_backend____init__.py) (from `claude_backend/gui.py:212`)
 - [`_on_load`](patterns/_on_load.py) (from `claude_backend/gui.py:624`)
 - [`_build_snippets`](patterns/_build_snippets.py) (from `claude_backend/gui.py:1713`)
 - [`_build_memory`](patterns/_build_memory.py) (from `claude_backend/gui.py:1816`)
 - [`_load_memory`](patterns/_load_memory.py) (from `claude_backend/gui.py:1831`)
 - [`_build_report`](patterns/_build_report.py) (from `claude_backend/gui.py:1911`)
 - [`_save_report`](patterns/_save_report.py) (from `claude_backend/gui.py:2058`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/manifest.py:30`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/ollama_manager.py:44`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/overlay.py:98`)
+- [`__init__`](patterns/claude_backend____init___2.py) (from `claude_backend/manifest.py:30`)
+- [`__init__`](patterns/claude_backend____init___3.py) (from `claude_backend/ollama_manager.py:44`)
+- [`__init__`](patterns/claude_backend____init___4.py) (from `claude_backend/overlay.py:98`)
 - [`_build`](patterns/_build.py) (from `claude_backend/overlay.py:161`)
 - [`__post_init__`](patterns/__post_init__.py) (from `claude_backend/prefs.py:54`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/search.py:468`)
-- [`_build`](patterns/_build.py) (from `claude_backend/search.py:480`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/storage.py:18`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/tracker.py:32`)
+- [`__init__`](patterns/claude_backend____init___5.py) (from `claude_backend/search.py:502`)
+- [`_build`](patterns/claude_backend___build.py) (from `claude_backend/search.py:514`)
+- [`__init__`](patterns/claude_backend____init___6.py) (from `claude_backend/storage.py:18`)
+- [`__init__`](patterns/claude_backend____init___7.py) (from `claude_backend/tracker.py:32`)
 - [`_load`](patterns/_load.py) (from `claude_backend/tracker.py:37`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/tracker.py:125`)
-- [`_load`](patterns/_load.py) (from `claude_backend/tracker.py:143`)
+- [`__init__`](patterns/claude_backend____init___8.py) (from `claude_backend/tracker.py:125`)
+- [`_load`](patterns/claude_backend___load.py) (from `claude_backend/tracker.py:143`)
 - [`_save`](patterns/_save.py) (from `claude_backend/tracker.py:153`)
-- [`__init__`](patterns/__init__.py) (from `claude_backend/welcome.py:118`)
-- [`_build_index`](patterns/_build_index.py) (from `claude_backend/generators/snippet_library.py:198`)
+- [`__init__`](patterns/claude_backend____init___9.py) (from `claude_backend/welcome.py:118`)
+- [`_build_index`](patterns/_build_index.py) (from `claude_backend/generators/snippet_library.py:252`)
 - [`init_sqlite`](patterns/init_sqlite.py) (from `extension_native_bridge/host/claude_native_host.py:86`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/config.py:29`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/expander.py:12`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/gemini_client.py:12`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/gemini_client.py:33`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/history.py:18`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/history.py:66`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/task_manager.py:62`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/task_manager.py:129`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/ui/app.py:14`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/ui/app.py:57`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder/ui/app.py:105`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/bridge.py:17`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/broadcast.py:169`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/cdp_client.py:188`)
-- [`is_connected`](patterns/is_connected.py) (from `gemini_coder_web/cdp_client.py:218`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/cdp_client.py:630`)
-- [`connection`](patterns/connection.py) (from `gemini_coder_web/cdp_client.py:641`)
-- [`is_connected`](patterns/is_connected.py) (from `gemini_coder_web/cdp_client.py:645`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/session_manager.py:50`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/universal_client.py:83`)
-- [`is_configured`](patterns/is_configured.py) (from `gemini_coder_web/universal_client.py:124`)
-- [`__init__`](patterns/__init__.py) (from `gemini_coder_web/universal_client.py:513`)
-- [`_on_save_task_settings`](patterns/_on_save_task_settings.py) (from `gemini_coder_web/ui/app_web.py:1309`)
+- [`__init__`](patterns/gemini_coder____init__.py) (from `gemini_coder/config.py:29`)
+- [`__init__`](patterns/gemini_coder____init___2.py) (from `gemini_coder/expander.py:12`)
+- [`__init__`](patterns/gemini_coder____init___3.py) (from `gemini_coder/gemini_client.py:12`)
+- [`__init__`](patterns/gemini_coder____init___4.py) (from `gemini_coder/gemini_client.py:33`)
+- [`__init__`](patterns/gemini_coder____init___5.py) (from `gemini_coder/history.py:18`)
+- [`__init__`](patterns/gemini_coder____init___6.py) (from `gemini_coder/history.py:66`)
+- [`__init__`](patterns/gemini_coder____init___7.py) (from `gemini_coder/task_manager.py:62`)
+- [`__init__`](patterns/gemini_coder____init___8.py) (from `gemini_coder/task_manager.py:129`)
+- [`__init__`](patterns/ui____init__.py) (from `gemini_coder/ui/app.py:14`)
+- [`__init__`](patterns/ui____init___2.py) (from `gemini_coder/ui/app.py:57`)
+- [`__init__`](patterns/ui____init___3.py) (from `gemini_coder/ui/app.py:105`)
+- [`__init__`](patterns/gemini_coder_web____init__.py) (from `gemini_coder_web/bridge.py:17`)
 - [`_on_save_task_settings`](patterns/_on_save_task_settings.py) (from `ui/app_web.py:1314`)

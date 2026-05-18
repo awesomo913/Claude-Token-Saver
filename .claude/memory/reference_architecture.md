@@ -69,6 +69,7 @@ type: reference
   - imports: .backend, .config, ., .prefs, .single_instance
 - `claude_backend/config.py`: Configuration loading with layered defaults. | exports: logger, DEFAULT_EXTENSIONS, DEFAULT_IGNORE_DIRS, ScanConfig, load_config, save_config_example
 - `claude_backend/constants.py`: Shared constants used by /improve (http_server) and Smart-mode Builder (gui). | exports: SNIPPET_TOP_K, SNIPPET_TOKEN_BUDGET, RECENT_PROJECTS_LIMIT
+- `claude_backend/diagnostics_logger.py`: Frozen-exe-safe diagnostic logger. | exports: bootstrap, state, decision, perf, previous_crash
 - `claude_backend/generators/__init__.py`: Generator modules for CLAUDE.md, memory files, and snippet libraries.
 - `claude_backend/generators/claude_md.py`: Generate a CLAUDE.md file from project analysis. | exports: logger, MARKER_START, MARKER_END, generate_claude_md, write_claude_md
   - imports: ..types
@@ -85,7 +86,7 @@ type: reference
 - `claude_backend/manifest.py`: Delta-aware manifest for tracking generated files with SHA-256 hashing. | exports: logger, ManifestEntry, Manifest
 - `claude_backend/ollama_manager.py`: Ollama model manager — list, pull, delete, select models via HTTP API. | exports: logger, DEFAULT_HOST, RECOMMENDED_MODELS, TURBO_QUANTS, CODING_KEYWORDS, OllamaManager
 - `claude_backend/overlay.py`: Floating overlay button for Claude Desktop (Phase 2). | exports: logger, OverlayButton, open_overlay, main
-  - imports: .prefs, .single_instance, .single_instance, .single_instance
+  - imports: .prefs, ., .diagnostics_logger, .single_instance, .single_instance
 - `claude_backend/prefs.py`: User preferences for Token Saver GUI — small JSON store. | exports: logger, PREFS_PATH, Prefs
 - `claude_backend/prompt_builder.py`: Smart prompt builder — integrates Prompt Architect logic for better prompts. | exports: ROLES, CONSTRAINTS, REASONING, detect_intent, clean_request, build_smart_prompt, review_prompt
   - imports: .tokenizer

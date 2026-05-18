@@ -1,4 +1,5 @@
 # From: classifier/types.py:9
+# Result of classifying a prompt.
 
 @dataclass
 class TaskClassification:

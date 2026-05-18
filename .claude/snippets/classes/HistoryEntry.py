@@ -1,4 +1,5 @@
 # From: gemini_coder/history.py:15
+# A single entry in the history.
 
 class HistoryEntry:
     """A single entry in the history."""

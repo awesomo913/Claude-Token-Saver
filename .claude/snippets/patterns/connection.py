@@ -1,4 +1,4 @@
-# From: gemini_coder_web/cdp_client.py:641
+# From: cdp_client.py:641
 
     @property
     def connection(self) -> CDPConnection:

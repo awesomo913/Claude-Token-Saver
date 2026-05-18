@@ -1,4 +1,5 @@
-# From: gemini_coder_web/ai_profiles.py:17
+# From: ai_profiles.py:17
+# Describes how to automate a specific AI web chat.
 
 @dataclass
 class AIProfile:

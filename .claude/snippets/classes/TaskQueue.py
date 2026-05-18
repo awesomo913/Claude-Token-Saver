@@ -1,4 +1,5 @@
 # From: gemini_coder/task_manager.py:59
+# Queue of tasks for a session.
 
 class TaskQueue:
     """Queue of tasks for a session."""

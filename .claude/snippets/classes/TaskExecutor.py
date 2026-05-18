@@ -1,4 +1,5 @@
 # From: gemini_coder/task_manager.py:126
+# Executes tasks from a queue using a client.
 
 class TaskExecutor:
     """Executes tasks from a queue using a client."""

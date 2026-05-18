@@ -1,4 +1,5 @@
 # From: claude_backend/storage.py:15
+# Manages file storage for a Claude project directory.
 
 class ProjectStorage:
     """Manages file storage for a Claude project directory."""

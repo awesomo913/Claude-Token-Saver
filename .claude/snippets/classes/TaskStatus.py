@@ -1,4 +1,5 @@
 # From: gemini_coder/task_manager.py:15
+# Task execution status.
 
 class TaskStatus(Enum):
     """Task execution status."""

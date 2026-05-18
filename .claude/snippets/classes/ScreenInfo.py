@@ -1,4 +1,5 @@
-# From: gemini_coder_web/window_manager.py:33
+# From: window_manager.py:33
+# Screen dimensions.
 
 @dataclass
 class ScreenInfo:

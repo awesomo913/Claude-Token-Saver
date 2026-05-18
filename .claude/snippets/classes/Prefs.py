@@ -1,4 +1,5 @@
 # From: claude_backend/prefs.py:27
+# User-facing preferences. Add fields here; defaults always backfilled.
 
 @dataclass
 class Prefs:

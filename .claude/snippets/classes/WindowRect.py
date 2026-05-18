@@ -1,4 +1,5 @@
-# From: gemini_coder_web/window_manager.py:24
+# From: window_manager.py:24
+# Screen rectangle.
 
 @dataclass
 class WindowRect:

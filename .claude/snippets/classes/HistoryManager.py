@@ -1,4 +1,5 @@
 # From: gemini_coder/history.py:63
+# Manages task and conversation history.
 
 class HistoryManager:
     """Manages task and conversation history."""

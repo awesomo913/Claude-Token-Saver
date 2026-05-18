@@ -1,4 +1,5 @@
-# From: gemini_coder_web/session_manager.py:25
+# From: session_manager.py:25
+# One AI browser session — a window, a client, and a task queue.
 
 @dataclass
 class Session:

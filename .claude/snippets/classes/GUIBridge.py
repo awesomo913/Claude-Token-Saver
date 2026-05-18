@@ -1,4 +1,5 @@
 # From: gemini_coder_web/bridge.py:10
+# Bridge between the GUI and the backend.
 
 class GUIBridge:
     """Bridge between the GUI and the backend.

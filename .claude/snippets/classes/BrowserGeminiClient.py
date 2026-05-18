@@ -1,4 +1,5 @@
-# From: gemini_coder_web/universal_client.py:511
+# From: universal_client.py:511
+# Legacy alias — creates a UniversalBrowserClient with Gemini preset.
 
 class BrowserGeminiClient(UniversalBrowserClient):
     """Legacy alias — creates a UniversalBrowserClient with Gemini preset."""

@@ -1,4 +1,5 @@
 # From: gemini_coder/ui/app.py:54
+# Toast notification overlay.
 
 class ToastNotification:
     """Toast notification overlay."""

@@ -1,4 +1,5 @@
 # From: claude_backend/types.py:42
+# Information about a Python module.
 
 @dataclass
 class ModuleInfo:

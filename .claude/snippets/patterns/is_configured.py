@@ -1,4 +1,4 @@
-# From: gemini_coder_web/universal_client.py:124
+# From: universal_client.py:124
 
     @property
     def is_configured(self) -> bool:
