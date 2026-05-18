@@ -26,3 +26,15 @@ logs/rebuild_*.log
 
 # Scheduled-task runner lock (per-process, never useful to commit)
 .claude/scheduled_tasks.lock
+
+# Per-session diagnostics regenerated on every Token Saver run.
+# manifest.jsonl was rewriting ~340 lines per session as a sort/hash refresh,
+# polluting diffs. These are derived artifacts, never source-of-truth.
+.claude/manifest.jsonl
+.claude/hot_files.md
+.claude/source_snapshot.json
+
+# Local git worktrees. The 160000-mode entry was a phantom gitlink left by
+# `git worktree add` running under .claude/worktrees/; worktrees are
+# filesystem-local dev state, never repo content.
+.claude/worktrees/
