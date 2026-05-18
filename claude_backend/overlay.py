@@ -676,30 +676,6 @@ def open_overlay(parent: ctk.CTk) -> OverlayButton:
 _OVERLAY_INSTANCE_NAME = "ClaudeTokenSaverOverlay"
 
 
-def _install_overlay_file_logger() -> None:
-    """Mirror overlay's logger to ~/.claude/session-data/<date>/exe_Overlay.log.
-
-    Frozen exe has no console, so warnings vanished into the void. The file
-    handler is best-effort: any failure here is silent (logged at debug
-    via the existing logger config) since we don't want logging setup to
-    crash the overlay process.
-    """
-    try:
-        from datetime import date
-        log_dir = Path.home() / ".claude" / "session-data" / date.today().isoformat()
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "exe_Overlay.log"
-        fh = logging.FileHandler(log_path, encoding="utf-8")
-        fh.setLevel(logging.INFO)
-        fh.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s %(name)s: %(message)s",
-        ))
-        logging.getLogger().addHandler(fh)
-        logger.info("overlay logger attached to %s", log_path)
-    except Exception as e:
-        logger.debug("overlay file logger install failed: %s", e)
-
-
 def main() -> int:
     """Run overlay as its own process with a hidden parent Tk root.
 
@@ -707,20 +683,34 @@ def main() -> int:
     True, so the overlay is independent of the GUI window's lifetime.
     Single-instance enforced via shared lock (re-launching is a no-op).
     """
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    _install_overlay_file_logger()
+    # Frozen-exe-safe structured logger: STARTUP/STATE/DECISION/PERF/CRASH
+    # land in ~/.claude/session-data/<date>/exe_Overlay.log per the
+    # workspace exe-packaging convention. Replaces the prior ad-hoc
+    # _install_overlay_file_logger() — that gave us a file handler but no
+    # excepthook, so frozen-exe crashes vanished without stderr.
+    from . import __version__
+    from .diagnostics_logger import bootstrap, decision, perf, state
+    bootstrap(app_name="Overlay", version=__version__)
+    state("init")
+
+    _t0 = time.perf_counter()
 
     # Best-effort cleanup of any stale raise-flag left behind by a
     # previously-crashed overlay instance — otherwise we'd "raise" on
     # boot for a launch attempt that happened long before we started.
     from .single_instance import _flag_path
+    _stale_flag = _flag_path(_OVERLAY_INSTANCE_NAME)
     try:
-        _flag_path(_OVERLAY_INSTANCE_NAME).unlink(missing_ok=True)
+        had_stale = _stale_flag.exists()
+        _stale_flag.unlink(missing_ok=True)
+        decision(f"stale_flag_cleanup=found={had_stale}")
     except OSError as e:
         logger.debug("stale overlay raise-flag cleanup failed: %s", e)
+        decision(f"stale_flag_cleanup=error err={e!r}")
 
     from .single_instance import acquire_or_exit
     _lock = acquire_or_exit(_OVERLAY_INSTANCE_NAME)  # noqa: F841
+    decision("single_instance=acquired")
 
     # Hidden root window — only exists to host the Toplevel overlay.
     # Defense-in-depth so the root stays invisible even if some Tk
@@ -769,7 +759,10 @@ def main() -> int:
 
     root.after(1500, _tick_raise)
 
+    perf("tk_init", time.perf_counter() - _t0)
+    state("init->ready")
     root.mainloop()
+    state("ready->shutdown")
     return 0
 
 
