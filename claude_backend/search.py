@@ -371,6 +371,35 @@ def _expand_query(raw_query: str) -> list[str]:
     return list(expanded)
 
 
+# ── Symbol tokenization ────────────────────────────────────────────────
+
+def _split_name(name: str) -> list[str]:
+    """Tokenize a symbol: underscores, whitespace, AND camelCase boundaries.
+
+    `TokenTracker` was previously indexed as the single token "tokentracker"
+    because lowercasing happened before splitting. Queries like "token tracker"
+    never matched. Splitting on camelCase first preserves the word boundaries
+    that callers actually type.
+
+    Examples:
+        "TokenTracker"   -> ["token", "tracker"]
+        "HTTPServer"     -> ["http", "server"]
+        "send_message"   -> ["send", "message"]
+        "_show_picker"   -> ["show", "picker"]
+        "run_improve_pipeline" -> ["run", "improve", "pipeline"]
+    """
+    parts = re.split(r"[_\s]+", name)
+    out: list[str] = []
+    for p in parts:
+        if not p:
+            continue
+        # Camel boundaries: HTTPServer -> HTTP, Server  // tokenTracker -> token, Tracker
+        # Pattern grabs: acronym-runs, lower/digit runs, single uppercase, digits.
+        camel = re.findall(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z]+|\d+", p)
+        out.extend((c.lower() for c in camel) if camel else [p.lower()])
+    return [w for w in out if w]
+
+
 # ── Main scoring ───────────────────────────────────────────────────────
 
 def score_block(block: CodeBlock, query_terms: list[str], raw_words: list[str]) -> float:
@@ -384,8 +413,13 @@ def score_block(block: CodeBlock, query_terms: list[str], raw_words: list[str]) 
     score = 0.0
 
     name_lower = block.name.lower()
-    name_words = re.split(r"[_\s]+", name_lower)
-    name_words = [w for w in name_words if w]
+    name_words = _split_name(block.name)
+
+    # Strong boost when the query mentions the symbol verbatim
+    # ("how does focus_window work"). Without this, raw_words=["focus_window"]
+    # never matched name_words=["focus","window"] for the +10 per-word path.
+    if name_lower in raw_words:
+        score += 25.0
 
     doc_lower = (block.docstring or "").lower()
     doc_words = set(re.split(r"\W+", doc_lower)) if doc_lower else set()
@@ -479,8 +513,12 @@ class SearchIndex:
 
     def _build(self) -> None:
         for i, block in enumerate(self._snippets):
-            nw = [w for w in re.split(r"[_\s]+", block.name.lower()) if w]
+            nw = _split_name(block.name)
             self._name_words.append(nw)
+            # Also index the full lowercased symbol name as one token so
+            # `qw == "focus_window"` queries hit immediately via the
+            # candidate-selection union (line ~517) without needing fuzzy.
+            self._name_index.setdefault(block.name.lower(), set()).add(i)
             for w in nw:
                 self._name_index.setdefault(w, set()).add(i)
                 # Also index stems and prefixes for fuzzy
@@ -533,12 +571,17 @@ class SearchIndex:
             sc = score_block(block, expanded, raw_words)
             if sc < min_score:
                 continue
-            # Penalize very large blocks — they waste tokens
-            lines = block.end_line - block.start_line + 1
-            if lines > 100:
-                sc *= 0.5
-            elif lines > 50:
-                sc *= 0.75
+            # Penalize very large blocks — they waste tokens. Skip for
+            # classes: they're inherently bigger (TokenTracker=83L, etc.),
+            # the injection-time token budget already caps oversize, and
+            # the penalty was double-counting against semantically-dense
+            # class hits.
+            if block.kind != "class":
+                lines = block.end_line - block.start_line + 1
+                if lines > 100:
+                    sc *= 0.5
+                elif lines > 50:
+                    sc *= 0.75
             results.append((sc, block))
 
         # Deduplicate: same function from duplicate file paths (e.g. cdp_client.py vs gemini_coder_web/cdp_client.py)
