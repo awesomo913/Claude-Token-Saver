@@ -1,4 +1,4 @@
-# From: claude_backend/diagnostics_logger.py:129
+# From: claude_backend/diagnostics_logger.py:144
 # Log a non-trivial branch (e.g. 'cleanup=skipped reason=no-stale-flag').
 
 def decision(detail: str) -> None:

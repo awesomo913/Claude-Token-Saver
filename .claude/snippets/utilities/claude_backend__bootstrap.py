@@ -1,4 +1,4 @@
-# From: claude_backend/diagnostics_logger.py:68
+# From: claude_backend/diagnostics_logger.py:83
 # Initialize the per-app logger. Idempotent: subsequent calls are no-ops.
 
 def bootstrap(app_name: str, version: str = "0.1.0") -> Path:

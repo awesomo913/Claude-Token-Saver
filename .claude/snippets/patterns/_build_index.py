@@ -1,4 +1,4 @@
-# From: claude_backend/generators/snippet_library.py:252
+# From: claude_backend/generators/snippet_library.py:259
 
 def _build_index(
     utility_writes: list[tuple[CodeBlock, str]],

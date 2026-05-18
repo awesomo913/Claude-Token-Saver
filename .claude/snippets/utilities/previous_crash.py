@@ -1,4 +1,4 @@
-# From: claude_backend/diagnostics_logger.py:139
+# From: claude_backend/diagnostics_logger.py:154
 # Inspect tail of the most-recent log file across recent days.
 
 def previous_crash() -> dict | None:

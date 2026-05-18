@@ -1,4 +1,4 @@
-# From: claude_backend/diagnostics_logger.py:124
+# From: claude_backend/diagnostics_logger.py:139
 # Log a STATE transition (e.g. 'init->ready', 'ready->shutdown').
 
 def state(transition: str) -> None:

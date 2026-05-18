@@ -16,16 +16,23 @@ def _dedupe_and_assign_paths(
     Preserves the original ordering of kept blocks so the cap-slice
     applied by the caller still sees blocks in traversal order.
     """
-    # Pass 1: dedupe — last writer wins for same shape, but we re-check
-    # which file_path is shorter, so canonical location is kept.
+    # Pass 1: dedupe — keep block with shortest file_path for each
+    # (name, source-stripped) key. Track first-seen position of each
+    # key in the input list so we can preserve traversal order in the
+    # output. Previous version filtered the input via `id(b) in kept_ids`,
+    # which silently dropped both copies if a caller passed two refs to
+    # the same object — structurally fragile even though the current
+    # scanner emits one block per source location.
     canonical: dict[tuple[str, str], CodeBlock] = {}
-    for b in blocks:
+    first_seen: dict[tuple[str, str], int] = {}
+    for i, b in enumerate(blocks):
         key = (b.name, b.source.strip())
         existing = canonical.get(key)
         if existing is None or len(b.file_path) < len(existing.file_path):
             canonical[key] = b
-    kept_ids = {id(b) for b in canonical.values()}
-    deduped = [b for b in blocks if id(b) in kept_ids]
+        if key not in first_seen:
+            first_seen[key] = i
+    deduped = [canonical[k] for k in sorted(canonical, key=first_seen.get)]
 
     # Pass 2: assign safe paths with collision disambiguation.
     out: list[tuple[CodeBlock, str]] = []
