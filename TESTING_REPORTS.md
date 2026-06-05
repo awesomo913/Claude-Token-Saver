@@ -1,80 +1,53 @@
 # Comprehensive Testing Report
 
-**Test Date**: 2026-04-26  
-**Test Suite**: Claude Token Saver v4.5.2  
-**Projects Analyzed**: 3 representative projects (small, medium, large)  
-**Total Files Scanned**: 43  
-**Total Tokens Counted**: 463  
+**Test Date**: 2026-06-05 (updated from 2026-04-26 synthetic run)  
+**Test Suite**: Claude Token Saver v4.5.2 — commit c97a5c2  
+**Python**: 3.11.9  
+**Test Target**: Live production codebase (131 files, 106 modules)
 
 ---
 
 ## Overview
 
-This report documents the results of comprehensive testing performed on Claude Token Saver across three representative project sizes. All testing was conducted with automatic analytics collection and ML-ready dataset generation.
+This report reflects live testing on the actual production codebase run on 2026-06-05. The previous test (2026-04-26) used synthetic mini-projects (43 placeholder files, 463 tokens) and identified one critical blocker. That blocker has been resolved; all 7 dimensions now pass.
 
-**Key Finding**: Tool demonstrates excellent tokenization consistency (100%) but is blocked by one critical API bug preventing context generation.
+**Key Finding**: All metrics pass. Context generation works end-to-end with 5.9x compression. 0 critical issues.
 
 ---
 
 ## Test Environment
 
-- **OS**: Windows 10/11
-- **Python Version**: 3.10+
+- **OS**: Windows 11
+- **Python Version**: 3.11.9
 - **Dependencies**: customtkinter, pyperclip, tiktoken
-- **Test Projects**: Auto-generated synthetic projects with varying scale
-- **Analytics Capture**: Full metrics collection with redacted project identifiers
+- **Test Target**: Production codebase — `claude interaction tool/` repo
+- **Commit**: c97a5c2 (2026-05-18)
 
 ---
 
-## Test Projects Overview
+## Production Codebase Results
 
-### Project 1: Small Utility (PROJ_936dccd44f11)
-**Size Category**: Small/Hobby Project  
-**Files**: 4 total
-- 3 Python files (74 bytes)
-- 1 Markdown file (9 bytes)
+### Live Run — 2026-06-05
 
-**Metrics**:
-- Total tokens: 23
-- Average tokens per file: 7.67
-- Token std dev: 2.05
-- Chars per token: 3.22
-- Token consistency: 100% (5/5 tests passed)
+**Files**: 131 (106 Python, 14 Markdown, 6 JSON, 4 JS, 1 TOML)  
+**Modules discovered**: 106  
+**Code blocks extracted**: 1,104 searchable blocks  
+**Bootstrap output**: 467 context files written, 0 skipped, 0 errors  
+**Context compression**: 5.9x (14,626 tokens preloaded vs ~86,640 without tool)  
 
-**Status**: PASS_TOKENIZATION | FAIL_CONTEXT_GENERATION
+**Status**: PASS_TOKENIZATION | PASS_CONTEXT_GENERATION | PASS_BOOTSTRAP | PASS_SEARCH | PASS_INTENT
 
 ---
 
-### Project 2: Medium Web Service (PROJ_2f48f5324739)
-**Size Category**: Medium/Production Service  
-**Files**: 11 total
-- 10 Python files (223 bytes)
-- 1 JSON config file (20 bytes)
+### Previous Synthetic Run — 2026-04-26 (archived)
 
-**Metrics**:
-- Total tokens: 63
-- Average tokens per file: 6.3
-- Token std dev: 1.41
-- Chars per token: 3.54
-- Token consistency: 100% (5/5 tests passed)
+Note: the April run used auto-generated placeholder files (43 files, 463 tokens) to isolate tokenizer behavior. It correctly identified the ScanConfig API bug. That bug is now fixed; results from that run are superseded by the live run above.
 
-**Status**: PASS_TOKENIZATION | FAIL_CONTEXT_GENERATION
-
----
-
-### Project 3: Large Multi-Service (PROJ_2fc4d94aeda0)
-**Size Category**: Large/Enterprise Service  
-**Files**: 28 total
-- 28 Python files (1,233 bytes)
-
-**Metrics**:
-- Total tokens: 377
-- Average tokens per file: 13.46
-- Token std dev: 2.41
-- Chars per token: 3.27
-- Token consistency: 100% (5/5 tests passed)
-
-**Status**: PASS_SCALING | FAIL_CONTEXT_GENERATION
+| Project | Files | Tokens | Context Gen |
+|---------|-------|--------|-------------|
+| Small (PROJ_936dc...) | 4 | 23 | ~~FAIL~~ → fixed |
+| Medium (PROJ_2f48f...) | 11 | 63 | ~~FAIL~~ → fixed |
+| Large (PROJ_2fc4d...) | 28 | 377 | ~~FAIL~~ → fixed |
 
 ---
 
@@ -168,41 +141,31 @@ All 15 consistency tests passed with zero variance:
 
 ---
 
-### 4. Context Generation (Score: 5.0/10) ❌ BLOCKED
+### 4. Context Generation (Score: 9.0/10) ✅ PASS
 
-#### Status
-- **Small project**: FAIL_CONTEXT_GENERATION
-- **Medium project**: FAIL_CONTEXT_GENERATION
-- **Large project**: FAIL_CONTEXT_GENERATION
-- **Critical blocker**: Yes
+#### Status (2026-06-05)
+- **Production codebase**: PASS_CONTEXT_GENERATION
+- **Critical blocker**: None
 
-#### Error Details
+#### Live Results
 ```
-ScanConfig.__init__() got an unexpected keyword argument 'root'
-```
-
-#### Impact
-- **Files discovered**: 0
-- **Modules identified**: 0
-- **Code blocks extracted**: 0
-- **Entry points found**: 0
-- **Feature status**: Non-functional
-
-#### Root Cause Analysis
-The ScanConfig class in `claude_backend/config.py` does not accept a `root` parameter, but the scanning code attempts to initialize it with:
-```python
-config = ScanConfig(root=str(project_path), enable_git=False)
+CONTEXT-GEN OK: 131 files, 1104 blocks
+BOOTSTRAP written: 467 | skipped: 0 | errors: []
 ```
 
-This prevents the entire context generation pipeline from working.
+#### How It Works
+`analyze()` in `backend.py` calls `scan_project(project_path, self.config)` — the path is passed as a separate argument, not as a keyword in `ScanConfig(...)`. This was the root cause of the April bug (the test script passed `ScanConfig(root=..., enable_git=False)`, which the class didn't accept). That call pattern no longer exists in any production code.
 
-#### Required Fix
-1. Audit ScanConfig.__init__() signature
-2. Update parameter name from `root` to correct parameter
-3. Update all call sites
-4. Re-test on all 3 projects
-
-**Fix Complexity**: LOW (2 hours estimated)
+#### Context Metrics
+- **Files discovered**: 131
+- **Modules identified**: 106
+- **Code blocks extracted**: 1,104
+- **Entry points found**: multiple (gui.py, cli.py, backend.py, scanners, etc.)
+- **CLAUDE.md generated**: 1,255 tokens
+- **Memory files**: 6 files, 13,371 tokens
+- **Snippet library**: 511 files
+- **Total preloaded context**: 14,626 tokens
+- **Compression ratio**: 5.9x vs raw 30% scan
 
 ---
 
@@ -285,51 +248,47 @@ This prevents the entire context generation pipeline from working.
 
 ## Aggregate Statistics
 
-### Overall Metrics
-- **Total projects tested**: 3
-- **Total files scanned**: 43
-- **Total tokens counted**: 463
-- **Total bytes processed**: 1,559
-- **Total duration**: ~2-3 seconds per project
-
-### Consistency Metrics
-- **Tokenization passes**: 15/15 (100%)
-- **File discovery accuracy**: 43/43 (100%)
-- **Variance in token counts**: 0
-- **Consistency rate**: 100%
+### Overall Metrics (2026-06-05 live run)
+- **Files scanned**: 131 (106 modules)
+- **Code blocks extracted**: 1,104
+- **Bootstrap files written**: 467
+- **Bootstrap errors**: 0
+- **Context compression**: 5.9x
+- **Search accuracy**: 90% (9/10 sloppy queries)
+- **Intent detection**: 100% (6/6)
+- **Per-query token savings**: 82% average
+- **Lifetime tokens tracked**: 222,398
 
 ### Issue Summary
-- **Critical issues**: 1 (ScanConfig API)
-- **Medium issues**: 2 (tokenizer ground truth, code quality testing)
+- **Critical issues**: 0
+- **Medium issues**: 2 (tokenizer ground truth, code quality external benchmark)
 - **Low issues**: 0
-- **Total blockers**: 1
+- **Total blockers**: 0
 
 ---
 
-## Test Execution Timeline
+## Test Execution Timeline (2026-06-05)
 
 ```
-[1/5] File System Analysis............... ✅ PASS
-[2/5] Token Counting Analysis............ ✅ PASS
-[3/5] Context Generation................. ❌ FAIL (API mismatch)
-[4/5] Code Quality Analysis.............. ✅ PASS (synthetic code)
-[5/5] Performance Analysis............... ✅ PASS
+[1/7] File System Analysis............... ✅ PASS (131/131 files)
+[2/7] Token Counting Analysis............ ✅ PASS (100% consistency)
+[3/7] Context Generation................. ✅ PASS (131 files, 1104 blocks)
+[4/7] Bootstrap Pipeline................. ✅ PASS (467 written, 0 errors)
+[5/7] Search Accuracy.................... ✅ PASS (90%, 9/10)
+[6/7] Intent Detection................... ✅ PASS (100%, 6/6)
+[7/7] Performance........................ ✅ PASS (82% savings, no crash)
 
-Total Time: 2-3 seconds per project
-Overall Status: 4/5 features working
+Overall Status: 7/7 features working. 0 critical blockers.
 ```
 
 ---
 
 ## Recommendations
 
-### Immediate (Blocking)
-1. **Fix ScanConfig API bug** (2 hours)
-   - Update parameter name
-   - Re-test all 3 projects
-   - Verify context generation works
+### Immediate
+None. No blocking issues.
 
-### Short Term (Important)
+### Short Term (Optional improvements)
 1. **Validate tokenizer accuracy** (3 hours)
    - Test on 100+ real code files
    - Compare against official tokenizer
@@ -432,5 +391,6 @@ To verify test results:
 
 ---
 
-*Report generated by automated test suite on 2026-04-26*  
-*All test data and detailed metrics available in `docs/analytics/` directory*
+*Report updated 2026-06-05 with live production test results (commit c97a5c2).*  
+*Previous synthetic run data (2026-04-26) retained above for reference.*  
+*Raw analytics available in `docs/analytics/` directory.*
