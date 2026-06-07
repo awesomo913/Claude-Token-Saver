@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:151
+# From: claude_backend/overlay.py:186
 # Persist current position to prefs.
 
     def _save_position(self) -> None:

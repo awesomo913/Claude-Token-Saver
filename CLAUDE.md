@@ -3,7 +3,7 @@
 
 ## Overview
 
-- **Files**: 124 (.py (102), .md (11), .json (6), .js (4), .toml (1))
+- **Files**: 131 (.py (106), .md (14), .json (6), .js (4), .toml (1))
 - **Entry points**: `broadcast.py`, `cdp_test.py`, `launch_token_saver.py`, `launch_tray.py`, `patch_upstream.py`
 - **Dependencies**: customtkinter, pyautogui, pyperclip, pystray, Pillow, psutil, websocket-client, keyboard, customtkinter, pyautogui
 - **Key files**: `README.md`, `CLAUDE.md`, `pyproject.toml`, `requirements.txt`, `.gitignore`
@@ -11,10 +11,11 @@
 ## Structure
 
 ```
+NeoAutocoder/  (5 files)
 ai/  (2 files)
 classifier/  (5 files)
   data/  (1 files)
-claude_backend/  (38 files)
+claude_backend/  (39 files)
   analyzers/  (4 files)
   generators/  (4 files)
   scanners/  (4 files)
@@ -45,6 +46,9 @@ ui/  (2 files)
 
 ## Modules
 
+- `NeoAutocoder/core_loop.py`
+- `NeoAutocoder/provider_chain.py`
+- `NeoAutocoder/session.py`
 - `ai_profiles.py` -- AI profiles for universal browser automation
 - `auto_save.py` -- Auto-save task output to Downloads folder as .txt files
 - `broadcast.py` -- Broadcast mode — send a task to all active sessions and loop endlessly
@@ -71,6 +75,7 @@ ui/  (2 files)
 - `claude_backend/gui.py` -- Claude Token Saver — standalone GUI for managing project context [entry]
 - `claude_backend/hotkey.py` -- Global hotkey daemon for Phase 3
 - `claude_backend/http_server.py` -- Localhost HTTP backend — three thin clients funnel into one server
+- `claude_backend/http_server_boot.py` -- Standalone HTTP server boot — belt-and-suspenders fallback for SessionStart [entry]
 - `claude_backend/manifest.py` -- Delta-aware manifest for tracking generated files with SHA-256 hashing
 - `claude_backend/ollama_manager.py` -- Ollama model manager — list, pull, delete, select models via HTTP API
 - `claude_backend/overlay.py` -- Floating overlay button for Claude Desktop (Phase 2) [entry]
@@ -81,10 +86,6 @@ ui/  (2 files)
 - `claude_backend/scanners/project.py` -- Project scanner: discovers and catalogs all files in a target project [entry]
 - `claude_backend/search.py` -- Fuzzy semantic search engine for code snippets
 - `claude_backend/session_launcher.py` -- Session launcher — invoked by Claude Code SessionStart hook [entry]
-- `claude_backend/single_instance.py` -- Single-instance enforcement for Token Saver tray + launcher
-- `claude_backend/storage.py` -- Project storage with pathlib, proper logging, and manifest tracking
-- `claude_backend/tokenizer.py` -- Accurate token counting with BPE tokenizer + fast fallback
-- `claude_backend/tracker.py` -- Token savings tracker and session context memory
 
 ## Snippets
 

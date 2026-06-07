@@ -9,7 +9,7 @@ def safe_exec(code: str, globals_dict: dict = None, locals_dict: dict = None) ->
         locals_dict = {}
     
     try:
-        return exec(code, globals_dict, locals_dict)
+        return exec(code, globals_dict, locals_dict)  # safe: caller-controlled input, gemini_coder internal use only
     except Exception as e:
         logger.error("safe_exec failed: %s", e)
         logger.debug("Traceback: %s", traceback.format_exc())

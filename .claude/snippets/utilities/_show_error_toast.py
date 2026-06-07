@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:635
+# From: claude_backend/overlay.py:717
 # Tiny self-dismissing CTkToplevel near the overlay reporting failure.
 
     def _show_error_toast(self, msg: str) -> None:

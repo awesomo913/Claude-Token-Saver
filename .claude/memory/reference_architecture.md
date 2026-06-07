@@ -35,6 +35,12 @@ type: reference
   - imports: .ai_profiles, .browser_actions, .window_manager, .cdp_client
 - `window_manager.py`: Universal window management for AI browser automation. | exports: logger, WindowRect, ScreenInfo, get_screen_size, get_quarter_rect, find_windows_by_title, find_chrome_windows, move_window
 
+## NeoAutocoder/
+
+- `NeoAutocoder/core_loop.py` | exports: CoreLoop, json
+- `NeoAutocoder/provider_chain.py` | exports: IMPROVEMENT_FOCUSES, FOCUS_ORDER, ProviderChain
+- `NeoAutocoder/session.py` | exports: Session, ProviderEntry
+
 ## ai/
 
 - `ai/__init__.py`
@@ -83,6 +89,7 @@ type: reference
   - imports: .prefs
 - `claude_backend/http_server.py`: Localhost HTTP backend — three thin clients funnel into one server. | exports: logger, PENDING_PATH, VERSION, list_recent_projects, run_improve_pipeline, write_pending, ensure_gui_running, ALLOWED_ORIGIN_PREFIXES
   - imports: .constants, .prompt_builder, .tokenizer, .prefs, .generators.snippet_library
+- `claude_backend/http_server_boot.py`: Standalone HTTP server boot — belt-and-suspenders fallback for SessionStart. | exports: logger, main
 - `claude_backend/manifest.py`: Delta-aware manifest for tracking generated files with SHA-256 hashing. | exports: logger, ManifestEntry, Manifest
 - `claude_backend/ollama_manager.py`: Ollama model manager — list, pull, delete, select models via HTTP API. | exports: logger, DEFAULT_HOST, RECOMMENDED_MODELS, TURBO_QUANTS, CODING_KEYWORDS, OllamaManager
 - `claude_backend/overlay.py`: Floating overlay button for Claude Desktop (Phase 2). | exports: logger, OverlayButton, open_overlay, main
@@ -100,7 +107,7 @@ type: reference
 - `claude_backend/search.py`: Fuzzy semantic search engine for code snippets. | exports: get_domain, get_domain_color, get_all_domains, score_block, SearchIndex, smart_search
   - imports: .types
 - `claude_backend/session_launcher.py`: Session launcher — invoked by Claude Code SessionStart hook. | exports: logger, main
-  - imports: .prefs, .single_instance
+  - imports: .prefs, .single_instance, .single_instance
 - `claude_backend/single_instance.py`: Single-instance enforcement for Token Saver tray + launcher. | exports: logger, poll_bring_to_front_flag, acquire_or_exit, is_locked, is_process_alive_by_cmdline
 - `claude_backend/storage.py`: Project storage with pathlib, proper logging, and manifest tracking. | exports: logger, ProjectStorage
   - imports: .types

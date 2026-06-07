@@ -1,72 +1,52 @@
-# From: broadcast.py:219
-# Start broadcasting to all target sessions.
+# From: claude_backend/hotkey.py:122
+# Register the global hotkey. Returns True on success.
 
-    def start(self, config: BroadcastConfig) -> None:
-        """Start broadcasting to all target sessions."""
-        if self._running:
-            return
+def start(combo: str | None = None) -> bool:
+    """Register the global hotkey. Returns True on success.
 
-        self._stop_event.clear()
-        self._running = True
-        self._iteration_counts.clear()
-        self._threads.clear()
+    Idempotent: re-registers if combo changed; no-op if same combo
+    already active.
+    """
+    global _thread, _registered_combo
 
-        # Determine target sessions
-        if config.session_ids:
-            sessions = [
-                self._sm.get_session(sid)
-                for sid in config.session_ids
-                if self._sm.get_session(sid)
-            ]
-        else:
-            sessions = self._sm.active_sessions
+    if keyboard is None:
+        logger.warning("keyboard library not available; hotkey disabled")
+        return False
 
-        if not sessions:
-            logger.warning("No active sessions to broadcast to")
-            self._running = False
-            return
+    with _lock:
+        if combo is None:
+            combo = Prefs.load().hotkey_combo
 
-        # Engineer the initial prompt
-        engineered = engineer_prompt(
-            task=config.task,
-            build_target=config.build_target,
-            enhancements=config.enhancements,
-            context=config.context,
-        )
+        if _registered_combo == combo and _thread is not None and _thread.is_alive():
+            return True  # already running with same combo
 
-        if self._on_status:
-            names = ", ".join(s.ai_profile.name for s in sessions)
-            self._on_status(f"Broadcasting to {len(sessions)} sessions: {names}")
+        # Tear down existing registration if any
+        try:
+            if _registered_combo:
+                keyboard.remove_hotkey(_registered_combo)
+        except Exception as e:
+            logger.debug("Failed to remove old hotkey: %s", e)
 
-        logger.info("Broadcasting to %d sessions: %s",
-                     len(sessions),
-                     [s.display_name for s in sessions])
-
-        # Model switching is done manually by the user before broadcast.
-        # Auto-switching was unreliable (typed model names into chat input).
-        # The UI shows a reminder: "Pick a different model on each window first."
-
-        # Smart routing: single orchestrated thread instead of per-session
-        if config.smart_route and SMART_ROUTER_AVAILABLE:
-            t = threading.Thread(
-                target=self._smart_route_loop,
-                args=(sessions, config, engineered),
-                daemon=True,
+        try:
+            keyboard.add_hotkey(combo, _on_hotkey, suppress=False)
+        except Exception as e:
+            logger.warning(
+                "Hotkey registration failed for '%s': %s. "
+                "On corporate Windows this can require admin rights.",
+                combo, e,
             )
-            self._threads.append(t)
-            t.start()
-            return
+            return False
 
-        # Launch a thread per session
-        for session in sessions:
-            if not session.is_configured:
-                logger.warning("Skipping unconfigured session: %s", session.display_name)
-                continue
+        _registered_combo = combo
 
-            t = threading.Thread(
-                target=self._session_loop,
-                args=(session, config, engineered),
-                daemon=True,
+        # Spawn a daemon thread that just keeps the hook alive.
+        # `keyboard.add_hotkey` already sets up the OS-level hook; we
+        # just need a thread to track 'aliveness' for status reporting.
+        if _thread is None or not _thread.is_alive():
+            _thread = threading.Thread(
+                target=_keep_alive, name="token_saver_hotkey", daemon=True,
             )
-            self._threads.append(t)
-            t.start()
+            _thread.start()
+
+        logger.info("Hotkey '%s' registered", combo)
+        return True

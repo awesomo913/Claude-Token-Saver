@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:98
+# From: claude_backend/overlay.py:133
 
     def __init__(self, parent: ctk.CTk) -> None:
         super().__init__(parent)

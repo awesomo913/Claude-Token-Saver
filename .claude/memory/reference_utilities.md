@@ -80,6 +80,13 @@ type: reference
 | `position_existing_window` | `window_manager.py` | Reposition an existing window to a quarter of the screen. |
 | `find_and_position_window` | `window_manager.py` | Find a window by title pattern and move it to the given corner. |
 | `main` | `__main__.py` | -- |
+| `CoreLoop` | `NeoAutocoder/core_loop.py` | The exact heart of Autocoder - the endless improvement loop. |
+| `json` | `NeoAutocoder/core_loop.py` | -- |
+| `IMPROVEMENT_FOCUSES` | `NeoAutocoder/provider_chain.py` | -- |
+| `FOCUS_ORDER` | `NeoAutocoder/provider_chain.py` | -- |
+| `ProviderChain` | `NeoAutocoder/provider_chain.py` | Full production-ready provider chain with cooldowns, cycling, and fallbacks. |
+| `Session` | `NeoAutocoder/session.py` | Exact match to original Session dataclass. |
+| `ProviderEntry` | `NeoAutocoder/session.py` | Exact match to original ProviderEntry. |
 | `main` | `ai/__main__.py` | -- |
 | `logger` | `classifier/classifier.py` | -- |
 | `PromptClassifier` | `classifier/classifier.py` | Classify prompts by complexity and route to free models or Claude. |
@@ -143,6 +150,8 @@ type: reference
 | `ALLOWED_ORIGIN_PREFIXES` | `claude_backend/http_server.py` | -- |
 | `is_port_free` | `claude_backend/http_server.py` | Check whether 127.0.0.1:port is free for bind. |
 | `is_backend_alive` | `claude_backend/http_server.py` | Authoritative check: is OUR HTTP backend answering on port? |
+| `logger` | `claude_backend/http_server_boot.py` | -- |
+| `main` | `claude_backend/http_server_boot.py` | -- |
 | `logger` | `claude_backend/manifest.py` | -- |
 | `ManifestEntry` | `claude_backend/manifest.py` | A single entry in the generation manifest. |
 | `Manifest` | `claude_backend/manifest.py` | Tracks generated files for delta updates. |

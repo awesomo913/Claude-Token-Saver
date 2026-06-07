@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:217
+# From: claude_backend/overlay.py:252
 # Set window translucency; clamped + cached so we don't pound
 
     def _set_alpha(self, alpha: float) -> None:

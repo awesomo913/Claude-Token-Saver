@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:229
+# From: claude_backend/overlay.py:264
 # True if the global mouse cursor is within FADE_PROXIMITY_PX
 
     def _cursor_near(self) -> bool:

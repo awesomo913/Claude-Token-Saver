@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:139
+# From: claude_backend/overlay.py:174
 # Get saved position or default to top-right of primary monitor.
 
     def _restore_position(self) -> tuple[int, int]:

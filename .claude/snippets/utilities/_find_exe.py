@@ -1,4 +1,4 @@
-# From: claude_backend/session_launcher.py:45
+# From: claude_backend/session_launcher.py:132
 # Locate ClaudeTokenSaver.exe on disk. Prefer Desktop deploy.
 
 def _find_exe() -> Path | None:

@@ -51,6 +51,41 @@ except (ImportError, OSError, AttributeError):
     _user32 = None  # type: ignore[assignment]
     _WIN32_OK = False
 
+
+def _get_window_title(hwnd: int) -> str:
+    if not _WIN32_OK or not hwnd:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(512)
+        _user32.GetWindowTextW(hwnd, buf, 512)
+        return buf.value
+    except Exception:
+        return ""
+
+
+def _score_project(proj: dict, window_title: str) -> int:
+    """Score how likely proj matches the window the user was working in."""
+    if not window_title:
+        return 0
+    import re
+    title_lower = window_title.lower()
+    name = (proj.get("name") or proj.get("slug") or "").lower()
+    path = (proj.get("path") or "").lower()
+
+    score = 0
+    if name and name in title_lower:
+        score += 60
+    # Last two path segments (most specific part of the path)
+    path_parts = [p for p in re.split(r"[/\\]", path) if len(p) > 2]
+    for part in path_parts[-2:]:
+        if part in title_lower:
+            score += 30
+    # Token overlap between project name and title words
+    title_tokens = set(re.split(r"[\s\-–|·/\\_.]+", title_lower)) - {"", "the", "a"}
+    name_tokens = set(re.split(r"[\s\-_]+", name)) - {""}
+    score += len(title_tokens & name_tokens) * 10
+    return score
+
 from .prefs import Prefs
 
 logger = logging.getLogger(__name__)
@@ -348,11 +383,12 @@ class OverlayButton(ctk.CTkToplevel):
                 return
 
             # Show project picker on the main thread.
-            self.after(0, lambda c=captured, s=saved: self._show_picker(c, s))
+            win_title = _get_window_title(target_hwnd)
+            self.after(0, lambda c=captured, s=saved, wt=win_title: self._show_picker(c, s, wt))
         except Exception as e:
             logger.exception("Overlay capture failed: %s", e)
 
-    def _show_picker(self, captured: str, saved_clipboard: str) -> None:
+    def _show_picker(self, captured: str, saved_clipboard: str, window_title: str = "") -> None:
         """Render a tiny project picker popup near the overlay."""
         picker = ctk.CTkToplevel(self)
         picker.overrideredirect(True)
@@ -504,6 +540,36 @@ class OverlayButton(ctk.CTkToplevel):
                     command=lambda: threading.Thread(
                         target=_fetch, daemon=True, name="ts_picker_retry",
                     ).start(),
+                ).pack(anchor="w", padx=6, pady=(0, 4))
+                def _open_gui() -> None:
+                    exe = Path.home() / "Desktop" / "My Apps" / "ClaudeTokenSaver" / "ClaudeTokenSaver.exe"
+                    try:
+                        if exe.is_file():
+                            import subprocess
+                            subprocess.Popen(
+                                [str(exe)],
+                                creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+                                close_fds=True,
+                            )
+                        else:
+                            import subprocess, sys
+                            py = Path(sys.executable).with_name("pythonw.exe")
+                            if not py.is_file():
+                                py = Path(sys.executable)
+                            subprocess.Popen(
+                                [str(py), "-m", "claude_backend.gui"],
+                                creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+                                close_fds=True,
+                            )
+                    except OSError as exc:
+                        logger.warning("Open Full GUI failed: %s", exc)
+                    _safe_destroy()
+                ctk.CTkButton(
+                    scroll, text="Open Full GUI",
+                    font=("Segoe UI", 10),
+                    fg_color=_C["card"], hover_color=_C["border"],
+                    text_color=_C["fg2"], height=28,
+                    command=_open_gui,
                 ).pack(anchor="w", padx=6, pady=(0, 8))
                 return
             if not projects:
@@ -514,6 +580,7 @@ class OverlayButton(ctk.CTkToplevel):
                     wraplength=280, justify="left",
                 ).pack(anchor="w", padx=6, pady=10)
                 return
+            buttons: list[tuple[ctk.CTkButton, dict]] = []
             for proj in projects:
                 ptitle = proj.get("name", proj.get("slug", "?"))
                 ppath = proj.get("path", "")
@@ -527,6 +594,21 @@ class OverlayButton(ctk.CTkToplevel):
                     command=lambda p=ppath: _pick(p),
                 )
                 b.pack(fill="x", pady=2)
+                buttons.append((b, proj))
+
+            # Auto-move mouse to best-matching project after layout settles.
+            if window_title and pyautogui is not None and buttons:
+                scored = [(b, _score_project(p, window_title)) for b, p in buttons]
+                best_btn, best_score = max(scored, key=lambda x: x[1])
+                if best_score > 0:
+                    def _move_to_best(btn=best_btn) -> None:
+                        try:
+                            bx = btn.winfo_rootx() + btn.winfo_width() // 2
+                            by = btn.winfo_rooty() + btn.winfo_height() // 2
+                            pyautogui.moveTo(bx, by, duration=0.18)
+                        except Exception as exc:
+                            logger.debug("auto-mouse failed: %s", exc)
+                    picker.after(150, _move_to_best)
 
         # None + Cancel — packed BEFORE the projects fetch so user can
         # always dismiss while the list loads. Bottom row of picker.

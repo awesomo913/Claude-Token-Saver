@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:247
+# From: claude_backend/overlay.py:282
 # Tick: restore alpha when cursor near, fade out after idle.
 
     def _poll_proximity(self) -> None:

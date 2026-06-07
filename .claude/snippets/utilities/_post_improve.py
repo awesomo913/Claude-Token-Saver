@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:590
+# From: claude_backend/overlay.py:672
 # POST to /improve. The GUI picks up the result via pending file.
 
     def _post_improve(

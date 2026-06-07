@@ -1,4 +1,4 @@
-# From: claude_backend/overlay.py:161
+# From: claude_backend/overlay.py:196
 
     def _build(self) -> None:
         # Outer Toplevel acts as the "border": fg_color is the border color.

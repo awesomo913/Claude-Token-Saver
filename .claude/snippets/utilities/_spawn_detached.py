@@ -1,4 +1,4 @@
-# From: claude_backend/session_launcher.py:53
+# From: claude_backend/session_launcher.py:140
 # Spawn a detached subprocess so the hook can return immediately.
 
 def _spawn_detached(args: list[str]) -> bool:
