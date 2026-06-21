@@ -124,7 +124,16 @@ def _spawn_overlay_subprocess() -> None:
 
 
 def _launch_gui(icon: Optional["pystray.Icon"] = None) -> None:
-    """Open Token Saver GUI in detached subprocess."""
+    """Open Token Saver GUI in detached subprocess.
+
+    This is the explicit user-driven summon path (tray single-click /
+    "Open Token Saver GUI" menu item). If a GUI is already running but
+    hidden in the tray, the spawned process finds the single-instance
+    lock held and writes a raise-flag; the live GUI's poller picks it up
+    and surfaces its existing window (see gui.py _tick_single_instance_raise
+    -> _summon_window). Either way, only a user tray action brings the
+    window back — never a background event.
+    """
     creationflags = 0
     if sys.platform == "win32":
         creationflags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS

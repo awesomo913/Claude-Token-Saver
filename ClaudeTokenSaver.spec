@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = ['claude_backend', 'claude_backend.gui', 'claude_backend.backend', 'claude_backend.config', 'claude_backend.types', 'claude_backend.storage', 'claude_backend.manifest', 'claude_backend.search', 'claude_backend.prompt_builder', 'claude_backend.tracker', 'claude_backend.ollama_manager', 'claude_backend.scanners', 'claude_backend.scanners.project', 'claude_backend.scanners.local', 'claude_backend.scanners.github', 'claude_backend.analyzers', 'claude_backend.analyzers.code_extractor', 'claude_backend.analyzers.pattern_detector', 'claude_backend.analyzers.structure_mapper', 'claude_backend.generators', 'claude_backend.generators.claude_md', 'claude_backend.generators.memory_files', 'claude_backend.generators.snippet_library', 'claude_backend.tokenizer', 'claude_backend.search', 'claude_backend.tray', 'claude_backend.welcome', 'claude_backend.prefs', 'claude_backend.single_instance', 'claude_backend.session_launcher', 'claude_backend.http_server', 'claude_backend.overlay', 'claude_backend.hotkey', 'keyboard', 'pyautogui', 'pyperclip', 'pystray', 'pystray._win32']
+hiddenimports = ['claude_backend', 'claude_backend.gui', 'claude_backend.backend', 'claude_backend.config', 'claude_backend.types', 'claude_backend.storage', 'claude_backend.manifest', 'claude_backend.search', 'claude_backend.prompt_builder', 'claude_backend.tracker', 'claude_backend.ollama_manager', 'claude_backend.scanners', 'claude_backend.scanners.project', 'claude_backend.scanners.local', 'claude_backend.scanners.github', 'claude_backend.analyzers', 'claude_backend.analyzers.code_extractor', 'claude_backend.analyzers.pattern_detector', 'claude_backend.analyzers.structure_mapper', 'claude_backend.generators', 'claude_backend.generators.claude_md', 'claude_backend.generators.memory_files', 'claude_backend.generators.snippet_library', 'claude_backend.tokenizer', 'claude_backend.search', 'claude_backend.tray', 'claude_backend.welcome', 'claude_backend.prefs', 'claude_backend.single_instance', 'claude_backend.session_launcher', 'claude_backend.http_server', 'claude_backend.overlay', 'claude_backend.session_detector', 'claude_backend.hotkey', 'keyboard', 'pyautogui', 'pyperclip', 'pystray', 'pystray._win32']
 hiddenimports += collect_submodules('customtkinter')
 hiddenimports += collect_submodules('pystray')
 hiddenimports += collect_submodules('keyboard')
@@ -38,6 +38,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['C:\\Users\\computer\\Desktop\\AI\\claude interaction tool\\assets\\claudetokensaver.ico'],
 )
 coll = COLLECT(
     exe,

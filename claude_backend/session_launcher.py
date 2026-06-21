@@ -177,8 +177,19 @@ def main() -> int:
     """
     prefs = Prefs.load()
 
+    # Default-off gate. This launcher NEVER spawns anything unless the user
+    # has explicitly opted in via prefs.auto_launch_gui_on_session (default
+    # False). With it off — the shipping default — session start is a pure
+    # no-op and no window or tray is forced onto the screen.
     if not prefs.auto_launch_gui_on_session:
         return 0
+
+    # When opted in, minimized mode (the default once opt-in) launches only
+    # the tray — no window. The full-window path below runs solely when the
+    # user has ALSO turned auto_launch_minimized OFF, i.e. a deliberate
+    # "open the window each session" choice. Even then, the GUI itself hides
+    # to the tray on close/minimize and carries WS_EX_NOACTIVATE, so it
+    # cannot steal keyboard focus.
 
     # Choose target based on mode.
     want_tray = prefs.auto_launch_minimized

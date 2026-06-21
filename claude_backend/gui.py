@@ -235,10 +235,38 @@ class TokenSaverApp(ctk.CTk):
         self._prefs = Prefs.load()
         self._welcome_dlg: Optional[ctk.CTkToplevel] = None
         self._settings_refresh_id: Optional[str] = None
+        # Tracks whether the window is currently hidden in the tray (withdrawn).
+        # Set True by _hide_to_tray, cleared by _summon_window. Used so
+        # automatic pollers never re-show a window the user parked in the tray.
+        self._hidden_to_tray = False
+        # Gate for any window-surfacing. ONLY an explicit user tray action
+        # (raise-flag from a dup launch, or the summon-overlay path) is
+        # allowed to flip this True for the duration of a single surface
+        # call. Automatic pollers (pending /improve file, session events)
+        # must NEVER surface the main window — they leave this False.
+        self._allow_user_surface = False
 
         self._build_ui()
         self._show_view("dashboard")
         self._update_token_display()
+
+        # Closing OR minimizing the window hides it to the system tray
+        # ("deck") instead of closing or dropping to the taskbar. The only
+        # ways it comes back: a tray icon/menu action (writes the raise-flag
+        # the GUI polls) or the explicit summon-overlay path.
+        try:
+            self.protocol("WM_DELETE_WINDOW", self._hide_to_tray)
+            # <Unmap> fires on minimize; route it to withdraw so the window
+            # never lingers as a taskbar button.
+            self.bind("<Unmap>", self._on_unmap)
+        except Exception as e:  # noqa: BLE001
+            logger.debug("close/minimize-to-tray wiring failed: %s", e)
+
+        # Apply WS_EX_NOACTIVATE after the window has rendered so the main
+        # GUI can never become the foreground/active window and steal the
+        # keyboard. Deferred because the HWND isn't reliably resolvable until
+        # the first idle cycle. No-op on non-Windows.
+        self.after(300, self._apply_no_activate_style)
 
         # Show welcome on launch unless user disabled it
         if self._prefs.show_welcome_on_launch:
@@ -252,7 +280,10 @@ class TokenSaverApp(ctk.CTk):
                 self.after(200, lambda p=last: self._auto_load_project(p))
 
         # Watch the HTTP server's IPC pending file for incoming /improve calls.
-        # When a payload appears, populate Builder and raise the window.
+        # When a payload appears we populate the Builder ONLY — we do NOT
+        # surface the window. Auto-surfacing the main GUI on a background
+        # event is the exact focus-stealing bug we are forbidding. The user
+        # brings the window back via the tray.
         self.after(1000, self._poll_pending_file)
         # v0.7.0 — single-instance bring-to-front poll. When a
         # duplicate launch detected the GUI mutex held, it wrote a
@@ -260,10 +291,17 @@ class TokenSaverApp(ctk.CTk):
         self.after(1500, self._tick_single_instance_raise)
 
     def _tick_single_instance_raise(self) -> None:
+        # The raise-flag is written by single_instance.acquire_or_exit when a
+        # SECOND GUI launch is rejected — i.e. the user clicked "Open Token
+        # Saver GUI" in the tray (or re-ran the exe). That is an explicit
+        # user action, so surfacing here is allowed. We route through
+        # _summon_window (the gated path) rather than _force_to_foreground
+        # directly, so the "only user actions surface" invariant holds in
+        # one place.
         try:
             from .single_instance import poll_bring_to_front_flag
             poll_bring_to_front_flag(
-                "ClaudeTokenSaverGUI", self._force_to_foreground,
+                "ClaudeTokenSaverGUI", self._summon_window,
             )
         except Exception as e:  # noqa: BLE001
             logger.debug("single-instance raise poll failed: %s", e)
@@ -271,6 +309,122 @@ class TokenSaverApp(ctk.CTk):
             self.after(1500, self._tick_single_instance_raise)
         except Exception:  # noqa: BLE001
             pass
+
+    # ── Hide-to-tray / explicit summon ────────────────────────────────
+    def _hide_to_tray(self) -> None:
+        """Hide the window into the system tray (withdraw).
+
+        Bound to the window-close button (WM_DELETE_WINDOW). `withdraw`
+        removes the window from screen AND from the taskbar — unlike
+        `iconify`, which would leave a taskbar button. The process keeps
+        running (and keeps its single-instance lock), so a later tray
+        click re-shows this same window via the raise-flag IPC.
+        """
+        try:
+            self._hidden_to_tray = True
+            self.withdraw()
+            logger.debug("main window hidden to tray")
+        except Exception as e:  # noqa: BLE001
+            logger.debug("hide-to-tray failed: %s", e)
+
+    def _on_unmap(self, event=None) -> None:
+        """Minimize handler — convert an OS minimize into a tray hide.
+
+        Tk fires <Unmap> on the toplevel when the window is minimized.
+        We only act when the event target is the toplevel itself (child
+        widgets also raise <Unmap>) and the window is actually iconified,
+        then withdraw so it lands in the tray, never the taskbar.
+        """
+        try:
+            if event is not None and getattr(event, "widget", None) is not self:
+                return
+            if self._hidden_to_tray:
+                return  # already parked — avoid recursion via withdraw
+            if self.state() == "iconic":
+                # Set the guard BEFORE withdraw(): on some Windows Tk builds
+                # withdraw() fires a second <Unmap> on this same call stack,
+                # and the re-entrant call must see the guard already True.
+                self._hidden_to_tray = True
+                self._hide_to_tray()
+        except Exception as e:  # noqa: BLE001
+            logger.debug("minimize-to-tray failed: %s", e)
+
+    def _summon_window(self) -> None:
+        """Explicit, user-initiated window surface (tray click / raise-flag).
+
+        This is the ONLY automatic-loop entry allowed to bring the main
+        window back, and it only runs because the user took a tray action
+        that wrote the raise-flag. It opens the gate, surfaces the window,
+        then closes the gate so no later background event can ride through.
+        """
+        self._allow_user_surface = True
+        try:
+            self._force_to_foreground()
+            # Clear the parked flag only after the raise actually ran, so a
+            # failed surface doesn't leave the state machine claiming the
+            # window is visible when it is still withdrawn.
+            self._hidden_to_tray = False
+        finally:
+            self._allow_user_surface = False
+
+    def _apply_no_activate_style(self) -> None:
+        """Add WS_EX_NOACTIVATE to the window's extended style (Windows only).
+
+        WS_EX_NOACTIVATE (0x08000000) tells Windows this top-level window
+        must not become the foreground/active window on its own — so it can
+        never steal keyboard focus from whatever the user is typing in
+        (Claude, the terminal, etc.). The user can still interact with it
+        when they explicitly bring it up from the tray. No-op off Windows.
+        """
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            WS_EX_NOACTIVATE = 0x08000000
+            GWL_EXSTYLE = -20
+            # use_last_error=True so ctypes.get_last_error() reflects the real
+            # Win32 GetLastError after Set/GetWindowLongPtr — otherwise we
+            # can't tell a failed apply (which would let the window grab
+            # focus) from a legitimate 0 return.
+            u32 = ctypes.WinDLL("user32", use_last_error=True)
+            # *Ptr variants are the 64-bit-safe ones; fall back to the 32-bit
+            # names on the rare build that lacks them.
+            get_long = getattr(u32, "GetWindowLongPtrW", None) or u32.GetWindowLongW
+            set_long = getattr(u32, "SetWindowLongPtrW", None) or u32.SetWindowLongW
+            # Declare signatures so the pointer-wide return isn't truncated.
+            get_long.restype = ctypes.c_ssize_t
+            get_long.argtypes = [wintypes.HWND, ctypes.c_int]
+            set_long.restype = ctypes.c_ssize_t
+            set_long.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
+            u32.GetAncestor.restype = wintypes.HWND
+            u32.GetAncestor.argtypes = [wintypes.HWND, ctypes.c_uint]
+
+            hwnd = u32.GetAncestor(wintypes.HWND(int(self.winfo_id())), 2)  # GA_ROOT
+            if not hwnd or not u32.IsWindow(hwnd):
+                logger.debug("no-activate: could not resolve top-level HWND")
+                return
+            cur = get_long(hwnd, GWL_EXSTYLE)
+            if cur & WS_EX_NOACTIVATE:
+                return  # already applied
+            ctypes.set_last_error(0)
+            result = set_long(hwnd, GWL_EXSTYLE, cur | WS_EX_NOACTIVATE)
+            # SetWindowLong* returns the PREVIOUS ex-style on success, 0 on
+            # failure. A 0 return is only a real failure when GetLastError is
+            # nonzero (0 can be the legitimate previous value). Don't claim
+            # success blindly — a silently-failed apply would let the window
+            # steal focus, the exact bug this guards against.
+            err = ctypes.get_last_error()
+            if result == 0 and err != 0:
+                logger.warning(
+                    "SetWindowLong(GWL_EXSTYLE) failed (err=%d); "
+                    "WS_EX_NOACTIVATE NOT applied — window may take focus", err,
+                )
+                return
+            logger.debug("WS_EX_NOACTIVATE applied to main window (hwnd=%s)", int(hwnd))
+        except Exception as e:  # noqa: BLE001
+            logger.debug("apply WS_EX_NOACTIVATE failed: %s", e)
 
     # ── Skeleton ────────────────────────────────────────────────────────
     def _build_ui(self) -> None:
@@ -785,16 +939,25 @@ class TokenSaverApp(ctk.CTk):
             except Exception as e:
                 logger.debug("Preview override failed: %s", e)
 
-        # Raise window to front so user sees Copy Prompt button.
-        self._force_to_foreground()
+        # DO NOT surface the window here. A pending /improve payload arrives
+        # on a background poll, not a user gesture — auto-raising it is the
+        # focus-stealing bug we are forbidding. The prompt is now sitting in
+        # the Builder; the user opens the window from the tray when ready.
+        # The toast still fires so a visible window gets the feedback, and
+        # the tray notification (http_server / overlay side) tells the user
+        # there is something waiting.
 
         if injected_n > 0:
             self._toast(
-                f"Auto-pulled {injected_n} snippet(s) ({injected_t} tokens)",
+                f"Auto-pulled {injected_n} snippet(s) ({injected_t} tokens) — "
+                "open from tray to copy",
                 "success",
             )
         else:
-            self._toast("Loaded prompt from external trigger", "success")
+            self._toast(
+                "Loaded prompt from external trigger — open from tray",
+                "success",
+            )
         self._log(
             f"HTTP IPC: loaded prompt ({len(original)} chars); "
             f"injected_snippets={injected_n} tokens={injected_t}"
@@ -813,7 +976,20 @@ class TokenSaverApp(ctk.CTk):
         workaround used by PowerToys, Slack, etc.). Pairs with
         `AllowSetForegroundWindow(ASFW_ANY)` called by the overlay /
         tray process before the pending file is written.
+
+        SAFETY GATE: this method physically surfaces the main window, so it
+        is only allowed to run when ``self._allow_user_surface`` is True —
+        which is set exclusively by ``_summon_window`` (the explicit
+        user/tray path). Any background caller that reaches here without the
+        gate open is a regression of the no-auto-surface rule; we log and
+        refuse instead of stealing focus.
         """
+        if not self._allow_user_surface:
+            logger.info(
+                "_force_to_foreground refused: no explicit user-surface "
+                "gate open (auto-surface is forbidden for the main window)",
+            )
+            return
         # Tk path first — covers non-Win32 and is harmless when the
         # window is already up and focused.
         try:

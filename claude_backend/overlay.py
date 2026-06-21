@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 import tkinter as tk
@@ -98,7 +99,7 @@ _C = {
     "purple": "#8e44ad",
 }
 
-_OVERLAY_W = 130
+_OVERLAY_W = 210
 _OVERLAY_H = 40
 
 # Project picker dimensions + edge clamp constants. The picker is a
@@ -165,11 +166,53 @@ class OverlayButton(ctk.CTkToplevel):
         self.bind("<ButtonRelease-1>", self._on_drag_end)
         self.bind("<Double-Button-1>", self._toggle_lock)
 
+        # Make the overlay a no-activate window: it receives clicks but can
+        # NEVER become the foreground/active window, so it cannot steal the
+        # user's keyboard focus while they work. Applied after first render.
+        self.after(0, self._apply_no_activate)
+
+        # Warm the project list in the background so the FIRST Bootstrap click
+        # opens an already-populated picker instead of waiting on a cold scan.
+        threading.Thread(target=self._warm_projects, daemon=True,
+                         name="ts_warm_projects").start()
+
         # Start the proximity-fade poller after the window has rendered.
         # We mark proximity initially so the user sees the button at full
         # opacity when it first appears — fading in cold would be ugly.
         self._last_proximity_ms = int(time.time() * 1000)
         self.after(_FADE_POLL_MS, self._poll_proximity)
+
+    # ── Startup helpers ───────────────────────────────────────────
+
+    def _warm_projects(self) -> None:
+        """Pre-populate the project-list cache so the first Bootstrap click
+        opens instantly instead of waiting on a cold filesystem scan."""
+        try:
+            from .session_detector import list_projects
+            list_projects()
+        except Exception as e:
+            logger.debug("project warm-up failed: %s", e)
+
+    # ── Focus safety ──────────────────────────────────────────────
+
+    def _apply_no_activate(self) -> None:
+        """Add WS_EX_NOACTIVATE so the overlay never steals foreground focus."""
+        if not _WIN32_OK:
+            return
+        try:
+            gwl_exstyle = -20
+            ws_ex_noactivate = 0x08000000
+            ws_ex_toolwindow = 0x00000080  # also keep it out of Alt-Tab
+            hwnd = int(_user32.GetAncestor(int(self.winfo_id()), 2))  # GA_ROOT
+            if not hwnd:
+                return
+            cur = _user32.GetWindowLongW(hwnd, gwl_exstyle)
+            _user32.SetWindowLongW(
+                hwnd, gwl_exstyle, cur | ws_ex_noactivate | ws_ex_toolwindow,
+            )
+            logger.info("overlay WS_EX_NOACTIVATE applied (hwnd=%s)", hwnd)
+        except Exception as e:
+            logger.debug("apply_no_activate failed: %s", e)
 
     def _restore_position(self) -> tuple[int, int]:
         """Get saved position or default to top-right of primary monitor."""
@@ -212,14 +255,32 @@ class OverlayButton(ctk.CTkToplevel):
             text_color="#ffffff",
             corner_radius=4,
             height=28,
+            width=92,
             command=self._on_click,
         )
-        btn.pack(fill="both", expand=True, padx=4, pady=4)
-        # Drag bindings on button too (else clicking the button would always fire)
-        btn.bind("<Button-1>", self._on_drag_start, add="+")
-        btn.bind("<B1-Motion>", self._on_drag_motion, add="+")
-        btn.bind("<ButtonRelease-1>", self._on_drag_end, add="+")
-        btn.bind("<Double-Button-1>", self._toggle_lock, add="+")
+        btn.pack(side="left", fill="both", expand=True, padx=(4, 2), pady=4)
+
+        boot_btn = ctk.CTkButton(
+            inner,
+            text="📦 Bootstrap",
+            font=("Segoe UI", 12, "bold"),
+            fg_color=_C["accent"],
+            hover_color="#1a8ae8",
+            text_color="#ffffff",
+            corner_radius=4,
+            height=28,
+            width=92,
+            command=self._on_bootstrap_click,
+        )
+        boot_btn.pack(side="left", fill="both", expand=True, padx=(2, 4), pady=4)
+
+        # Drag bindings on both buttons too (else clicking a button would
+        # always fire its action and never let the user drag the overlay).
+        for widget in (btn, boot_btn):
+            widget.bind("<Button-1>", self._on_drag_start, add="+")
+            widget.bind("<B1-Motion>", self._on_drag_motion, add="+")
+            widget.bind("<ButtonRelease-1>", self._on_drag_end, add="+")
+            widget.bind("<Double-Button-1>", self._toggle_lock, add="+")
 
     # ── Drag handling ─────────────────────────────────────────────
 
@@ -261,6 +322,34 @@ class OverlayButton(ctk.CTkToplevel):
         except Exception:  # noqa: BLE001
             pass
 
+    def surface(self) -> None:
+        """Bring the overlay to the user's attention (used by Summon).
+
+        Restores full opacity, resets the fade timer, raises Z-order, and
+        re-asserts always-on-top WITHOUT dropping it afterwards. If the saved
+        position is off-screen, nudges it back into view. Crucially this does
+        NOT call SetForegroundWindow / activate -- it must never steal the
+        user's keyboard focus.
+        """
+        try:
+            # Pull back on-screen if a stale saved position parked it off the
+            # visible area (a common "summon does nothing" cause).
+            try:
+                sw = self.winfo_screenwidth()
+                sh = self.winfo_screenheight()
+                x, y = self.winfo_x(), self.winfo_y()
+                if x < 0 or y < 0 or x > sw - 20 or y > sh - 20:
+                    nx = max(_SCREEN_MARGIN, min(sw - _OVERLAY_W - 24, sw - _OVERLAY_W - 24))
+                    self.geometry(f"+{nx}+{24}")
+            except Exception as exc:
+                logger.debug("surface reposition skipped: %s", exc)
+            self._last_proximity_ms = int(time.time() * 1000)
+            self._set_alpha(_FADE_ACTIVE_ALPHA)
+            self.lift()
+            self.attributes("-topmost", True)  # re-assert; do NOT toggle off
+        except Exception as e:
+            logger.debug("overlay surface failed: %s", e)
+
     def _cursor_near(self) -> bool:
         """True if the global mouse cursor is within FADE_PROXIMITY_PX
         of the overlay's bounds. Uses winfo_pointer{x,y} which works
@@ -291,17 +380,20 @@ class OverlayButton(ctk.CTkToplevel):
         elif now_ms - self._last_proximity_ms >= _FADE_DELAY_MS:
             self._set_alpha(_FADE_IDLE_ALPHA)
 
-        # Track foreground HWND. Skip our own root + any picker we
-        # might own so we don't save the overlay/picker as the
-        # "external" window the user was typing in.
+        # Track foreground HWND so a click can restore focus to the window
+        # the user was typing in. Skip ANY window owned by our own process
+        # (overlay root, picker, toast) -- comparing the owning PID is more
+        # robust than just excluding our root HWND, since a picker/toast is
+        # a separate Toplevel that would otherwise be saved as the
+        # "external" window and misroute the Ctrl+A+Ctrl+C macro into itself.
         if _WIN32_OK:
             try:
                 fg = int(_user32.GetForegroundWindow())
-                # GA_ROOT = 2; resolve our Toplevel root because
-                # winfo_id() returns the inner Tk drawable handle.
-                my_root = int(_user32.GetAncestor(int(self.winfo_id()), 2))
-                if fg and fg != my_root:
-                    self._last_external_hwnd = fg
+                if fg:
+                    fg_pid = ctypes.c_ulong(0)
+                    _user32.GetWindowThreadProcessId(fg, ctypes.byref(fg_pid))
+                    if fg_pid.value != os.getpid():
+                        self._last_external_hwnd = fg
             except Exception as e:
                 # Log but keep the poll alive — repeated user32
                 # failures point to a broken environment (DLL unloaded
@@ -387,6 +479,218 @@ class OverlayButton(ctk.CTkToplevel):
             self.after(0, lambda c=captured, s=saved, wt=win_title: self._show_picker(c, s, wt))
         except Exception as e:
             logger.exception("Overlay capture failed: %s", e)
+
+    # ── Bootstrap pipeline ────────────────────────────────────────
+
+    def _on_bootstrap_click(self) -> None:
+        """Open the Bootstrap picker for the project the user is working in.
+
+        Unlike Improve, this needs no clipboard capture -- it only needs the
+        title of the window the user had focused (to pre-select the best
+        match), then lists all projects ranked by recent edits.
+        """
+        if self._drag_data.get("moved"):
+            self._drag_data["moved"] = False
+            return
+        window_title = _get_window_title(self._last_external_hwnd)
+        logger.info("Bootstrap click; focused title=%r", window_title)
+        self._show_bootstrap_picker(window_title)
+
+    def _show_bootstrap_picker(self, window_title: str = "") -> None:
+        """Hybrid picker: focused match pre-selected on top, recency list below."""
+        picker = ctk.CTkToplevel(self)
+        picker.overrideredirect(True)
+        picker.attributes("-topmost", True)
+        picker.configure(fg_color=_C["card"])
+        try:
+            picker.transient(self)
+        except Exception:
+            pass
+
+        # Position + clamp (same logic as the Improve picker).
+        ox, oy = self.winfo_x(), self.winfo_y()
+        try:
+            sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        except Exception:
+            sw, sh = 1920, 1080
+        y_below = oy + _OVERLAY_H + _PICKER_GAP
+        if y_below + _PICKER_H + _SCREEN_MARGIN <= sh:
+            y = y_below
+        else:
+            y = max(_SCREEN_MARGIN, min(oy - _PICKER_H - _PICKER_GAP,
+                                       sh - _PICKER_H - _SCREEN_MARGIN))
+        x = max(_SCREEN_MARGIN, min(ox, sw - _PICKER_W - _SCREEN_MARGIN))
+        picker.geometry(f"{_PICKER_W}x{_PICKER_H}+{x}+{y}")
+
+        def _safe_destroy() -> None:
+            try:
+                picker.destroy()
+            except Exception:
+                pass
+
+        picker.bind("<Escape>", lambda _e: _safe_destroy())
+        picker.after(50, lambda: (picker.focus_set(), picker.lift()))
+
+        ctk.CTkLabel(
+            picker, text="Bootstrap which project?",
+            font=("Segoe UI", 11, "bold"), text_color=_C["fg2"],
+        ).pack(anchor="w", padx=10, pady=(8, 4))
+
+        scroll = ctk.CTkScrollableFrame(picker, fg_color=_C["bg"], height=380)
+        scroll.pack(fill="both", expand=True, padx=10, pady=(0, 4))
+
+        loading = ctk.CTkLabel(
+            scroll, text="Scanning projects...",
+            font=("Segoe UI", 10), text_color=_C["fg3"],
+        )
+        loading.pack(anchor="w", padx=6, pady=10)
+
+        def _pick(path: str) -> None:
+            _safe_destroy()
+            threading.Thread(
+                target=self._run_bootstrap, args=(path,),
+                daemon=True, name="ts_bootstrap_run",
+            ).start()
+
+        def _add_row(proj, *, highlight: bool) -> None:
+            import time as _t
+            age_s = max(0, int(_t.time()) - int(proj.recency_ts)) if proj.recency_ts else 0
+            if age_s < 3600:
+                age = f"{age_s // 60}m ago"
+            elif age_s < 86400:
+                age = f"{age_s // 3600}h ago"
+            else:
+                age = f"{age_s // 86400}d ago"
+            badge = "" if proj.bootstrapped else "  (new)"
+            tag = "  <- focused" if highlight else ""
+            label = f"{proj.name}{badge}{tag}\n{proj.path}   ({age})"
+            ctk.CTkButton(
+                scroll, text=label, anchor="w",
+                font=("Segoe UI", 10, "bold" if highlight else "normal"),
+                fg_color=_C["accent"] if highlight else _C["bg"],
+                hover_color="#1a8ae8" if highlight else _C["border"],
+                text_color="#fff" if highlight else _C["fg"],
+                command=lambda p=proj.path: _pick(p),
+            ).pack(fill="x", pady=2)
+
+        def _populate(projects, focused, error: str = "") -> None:
+            try:
+                if not picker.winfo_exists():
+                    return
+            except Exception:
+                return
+            for child in scroll.winfo_children():
+                try:
+                    child.destroy()
+                except Exception:
+                    pass
+            if error:
+                ctk.CTkLabel(
+                    scroll, text=f"Couldn't scan projects:\n{error}",
+                    font=("Segoe UI", 10), text_color=_C["err"],
+                    wraplength=280, justify="left",
+                ).pack(anchor="w", padx=6, pady=10)
+                return
+            if not projects:
+                ctk.CTkLabel(
+                    scroll, text="(no projects found)",
+                    font=("Segoe UI", 10), text_color=_C["fg3"],
+                ).pack(anchor="w", padx=6, pady=10)
+                return
+            # Focused match first (pre-selected), then the recency list with
+            # the focused one removed so it isn't shown twice.
+            if focused is not None:
+                _add_row(focused, highlight=True)
+                ctk.CTkLabel(
+                    scroll, text="recent",
+                    font=("Segoe UI", 9), text_color=_C["fg3"],
+                ).pack(anchor="w", padx=6, pady=(6, 0))
+            for proj in projects:
+                if focused is not None and proj.path == focused.path:
+                    continue
+                _add_row(proj, highlight=False)
+
+        def _fetch() -> None:
+            projects, focused, error = [], None, ""
+            try:
+                from .session_detector import focused_pick, list_projects
+                projects = list_projects()
+                focused = focused_pick(projects, window_title)
+            except Exception as e:
+                error = type(e).__name__ + (f": {e}" if str(e) else "")
+                logger.warning("bootstrap project scan failed: %s", error)
+            try:
+                picker.after(0, _populate, projects, focused, error)
+            except Exception as e:
+                logger.debug("bootstrap picker.after failed: %s", e)
+
+        # Cancel row, packed before fetch so it's always dismissable.
+        bottom = ctk.CTkFrame(picker, fg_color="transparent")
+        bottom.pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkButton(
+            bottom, text="Cancel", font=("Segoe UI", 10),
+            fg_color=_C["bg"], text_color=_C["fg2"],
+            command=_safe_destroy,
+        ).pack(side="left")
+
+        threading.Thread(target=_fetch, daemon=True,
+                         name="ts_bootstrap_fetch").start()
+
+    def _run_bootstrap(self, project_path: str) -> None:
+        """Run a full bootstrap in-process (works in the frozen exe).
+
+        A single bootstrap can take seconds to a couple of minutes on a large
+        project, so we surface a "starting" toast before the (blocking) scan so
+        the user gets immediate feedback, then a completion toast with the file
+        count and elapsed time once it returns. This method already runs on a
+        daemon worker thread, so the blocking call here does NOT freeze the UI;
+        the toasts are scheduled back onto the Tk main thread via after(0, ...).
+        """
+        if not project_path:
+            return
+        name = Path(project_path).name
+        logger.info("Bootstrapping %s", project_path)
+        # Immediate feedback — the scan below blocks this worker thread.
+        self.after(0, lambda n=name: self._show_toast(
+            f"Bootstrapping {n}… this can take up to ~2 min", ok=True))
+        t0 = time.perf_counter()
+        try:
+            from .backend import ClaudeContextManager
+            from .config import load_config
+            mgr = ClaudeContextManager(load_config())
+            # backend.bootstrap()/analyze() call project_path.resolve(), so it
+            # must be a Path, not the str the picker hands us.
+            result = mgr.bootstrap(Path(project_path))
+            if result is None:
+                raise RuntimeError("bootstrap() returned None")
+            elapsed_s = int(round(time.perf_counter() - t0))
+            if result.errors:
+                msg = f"{name}: done with {len(result.errors)} error(s) in {elapsed_s}s"
+            else:
+                msg = f"{name}: {len(result.files_written)} files in {elapsed_s}s"
+            self.after(0, lambda m=msg, ok=not result.errors:
+                       self._show_toast(m, ok=ok))
+        except Exception as e:
+            err = type(e).__name__ + (f": {e}" if str(e) else "")
+            logger.exception("Bootstrap failed for %s", project_path)
+            self.after(0, lambda m=err: self._show_toast(f"Bootstrap failed\n{m}", ok=False))
+
+    def _show_toast(self, msg: str, *, ok: bool = True) -> None:
+        """Self-dismissing status toast near the overlay (green ok / red fail)."""
+        try:
+            tw = ctk.CTkToplevel(self)
+            tw.overrideredirect(True)
+            tw.attributes("-topmost", True)
+            ox, oy = self.winfo_x(), self.winfo_y()
+            tw.geometry(f"280x60+{ox - 40}+{oy + _OVERLAY_H + 6}")
+            tw.configure(fg_color=_C["ok"] if ok else _C["err"])
+            ctk.CTkLabel(
+                tw, text=msg, font=("Segoe UI", 10, "bold"),
+                text_color="#ffffff", wraplength=260, justify="left",
+            ).pack(fill="both", expand=True, padx=8, pady=6)
+            tw.after(4500, lambda: self._safe_destroy(tw))
+        except Exception as e:
+            logger.debug("toast build failed: %s", e)
 
     def _show_picker(self, captured: str, saved_clipboard: str, window_title: str = "") -> None:
         """Render a tiny project picker popup near the overlay."""

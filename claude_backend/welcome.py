@@ -317,6 +317,8 @@ def show_welcome(parent: ctk.CTk, prefs: Prefs,
                  on_install_callback: Optional[Callable[[], None]] = None) -> WelcomeDialog:
     """Open welcome window. Returns dialog instance (caller can grab focus etc)."""
     dlg = WelcomeDialog(parent, prefs, on_install_callback=on_install_callback)
+    # lift() raises Z-order so the dialog is visible, but we deliberately do
+    # NOT call focus_force() — that steals the user's keyboard focus, which is
+    # exactly the behavior we've stamped out everywhere else in this app.
     dlg.lift()
-    dlg.focus_force()
     return dlg
