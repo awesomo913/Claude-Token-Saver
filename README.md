@@ -27,6 +27,7 @@ python launch_token_saver.py
 # tray-only launcher:
 python launch_tray.py
 ```
+Install `tiktoken` for exact BPE token counts (`pip install tiktoken`); it's not in `requirements.txt`, so without it token counts silently fall back to a character-based heuristic.
 
 ## Status
 **Unmaintained / archived.** Personal project, published as-is — fork it, adapt it, take it over. No support or guarantees.
